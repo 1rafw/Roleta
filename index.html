@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Roleta de Prêmios - CF Seguros</title>
     <style>
         * {
@@ -18,6 +19,7 @@
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
         }
         .header-title {
             margin-bottom: 20px;
@@ -39,7 +41,6 @@
             border-radius: 50%;
             border: 6px solid #334155;
         }
-        /* Círculo central com a logo da CF */
         .center-logo {
             position: absolute;
             top: 50%;
@@ -57,7 +58,6 @@
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0,0,0,0.1);
             border: 4px solid #f8fafc;
         }
-        /* Ponteiro elegante */
         .pointer {
             position: absolute;
             top: 50%;
@@ -84,6 +84,7 @@
             box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
             text-transform: uppercase;
             letter-spacing: 1px;
+            touch-action: manipulation;
         }
         .spin-btn:hover {
             background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
@@ -100,7 +101,6 @@
             transform: none;
         }
 
-        /* Modal customizado moderno para substituir o alerta */
         .modal {
             position: fixed;
             top: 0;
@@ -172,7 +172,6 @@
     
     <button class="spin-btn" onclick="spinWheel()" id="spinBtn">Girar Roleta</button>
 
-    <!-- Modal de Resultado Bonito -->
     <div class="modal" id="resultModal">
         <div class="modal-content">
             <h2>Parabéns! 🎉</h2>
@@ -185,12 +184,11 @@
         const canvas = document.getElementById("wheelCanvas");
         const ctx = canvas.getContext("2d");
 
-        // 1. CONFIGURAÇÃO DOS ITENS, PESOS E CORES COM GRADIENTES VISUAIS
         const items = [
-            { text: "Bombom", weight: 75, color1: "#0284c7", color2: "#0369a1" },       
-            { text: "Chaveiro", weight: 10, color1: "#1e293b", color2: "#0f172a" },     
-            { text: "Garrafa", weight: 10, color1: "#0ea5e9", color2: "#0284c7" },      
-            { text: "Brinde 3", weight: 5, color1: "#334155", color2: "#1e293b" }       
+            { text: "Opção 1", weight: 75, color1: "#0284c7", color2: "#0369a1" },       
+            { text: "Opção 2", weight: 10, color1: "#1e293b", color2: "#0f172a" },     
+            { text: "Opção 3", weight: 10, color1: "#0ea5e9", color2: "#0284c7" },      
+            { text: "Opção 4", weight: 5, color1: "#334155", color2: "#1e293b" }       
         ];
 
         let currentAngle = 0;
@@ -208,7 +206,6 @@
                 const startAngle = rotation + i * sliceAngle;
                 const endAngle = startAngle + sliceAngle;
 
-                // Criação de gradiente bonito para cada fatia
                 const sliceGradient = ctx.createRadialGradient(centerX, centerY, 40, centerX, centerY, radius);
                 sliceGradient.addColorStop(0, items[i].color1);
                 sliceGradient.addColorStop(1, items[i].color2);
@@ -219,21 +216,34 @@
                 ctx.fillStyle = sliceGradient;
                 ctx.fill();
                 
-                // Divisória sutil entre fatias
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
                 ctx.stroke();
 
-                // Renderização do texto alinhado
+                // Renderização inteligente para manter o texto sempre legível (em pé)
                 ctx.save();
                 ctx.translate(centerX, centerY);
-                ctx.rotate(startAngle + sliceAngle / 2);
-                ctx.textAlign = "right";
+                
+                const midAngle = startAngle + sliceAngle / 2;
+                ctx.rotate(midAngle);
+
+                // Normaliza o ângulo para ver se a fatia está no lado esquerdo da roleta
+                const normalizedAngle = (midAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                const isLeftHalf = normalizedAngle > Math.PI / 2 && normalizedAngle < (3 * Math.PI) / 2;
+
+                if (isLeftHalf) {
+                    ctx.rotate(Math.PI);
+                    ctx.textAlign = "left";
+                    ctx.fillText(items[i].text, -(radius - 35), 7);
+                } else {
+                    ctx.textAlign = "right";
+                    ctx.fillText(items[i].text, radius - 35, 7);
+                }
+
                 ctx.fillStyle = "#ffffff";
                 ctx.font = "bold 20px 'Segoe UI', Tahoma, sans-serif";
                 ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
                 ctx.shadowBlur = 4;
-                ctx.fillText(items[i].text, radius - 35, 7); 
                 ctx.restore();
             }
         }
@@ -256,7 +266,7 @@
             }
 
             const sliceCenterAngle = winningIndex * sliceAngle + sliceAngle / 2;
-            const extraSpins = 7 * 2 * Math.PI; // 7 voltas completas
+            const extraSpins = 7 * 2 * Math.PI; 
             
             const normalizedCurrentAngle = currentAngle % (2 * Math.PI);
             const targetBaseRotation = (2 * Math.PI) - sliceCenterAngle;
@@ -269,7 +279,7 @@
             const totalDistance = extraSpins + rotationNeeded;
             const startAngle = currentAngle; 
 
-            const duration = 4500; // 4.5 segundos de animação suave
+            const duration = 4500; 
             let start = null;
 
             function animate(timestamp) {
@@ -277,7 +287,6 @@
                 const elapsed = timestamp - start;
                 
                 let progress = Math.min(elapsed / duration, 1);
-                // Curva de desaceleração customizada (easeOutQuart)
                 const easeOut = 1 - Math.pow(1 - progress, 4);
                 
                 currentAngle = startAngle + totalDistance * easeOut;
