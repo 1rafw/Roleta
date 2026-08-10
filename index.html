@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Roleta de Prêmios - CF Seguros</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .header-title {
+            margin-bottom: 20px;
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #f8fafc;
+            text-transform: uppercase;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .wheel-container {
+            position: relative;
+            width: 420px;
+            height: 420px;
+            margin-bottom: 25px;
+            filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.5));
+        }
+        canvas {
+            border-radius: 50%;
+            border: 6px solid #334155;
+        }
+        /* Círculo central com a logo da CF */
+        .center-logo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            background-color: #ffffff; 
+            border-radius: 50%;
+            background-image: url('Logo azul.png');
+            background-size: 75%;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 5;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0,0,0,0.1);
+            border: 4px solid #f8fafc;
+        }
+        /* Ponteiro elegante */
+        .pointer {
+            position: absolute;
+            top: 50%;
+            right: -12px; 
+            transform: translateY(-50%);
+            width: 0; 
+            height: 0; 
+            border-top: 16px solid transparent;
+            border-bottom: 16px solid transparent;
+            border-right: 32px solid #38bdf8; 
+            z-index: 10;
+            filter: drop-shadow(-3px 0px 4px rgba(0,0,0,0.4));
+        }
+        .spin-btn {
+            padding: 16px 48px;
+            font-size: 20px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .spin-btn:hover {
+            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+            box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6);
+            transform: translateY(-2px);
+        }
+        .spin-btn:active {
+            transform: translateY(1px);
+        }
+        .spin-btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Modal customizado moderno para substituir o alerta */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 100;
+        }
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: #1e293b;
+            padding: 35px 50px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid #334155;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            animation: scaleUp 0.3s ease;
+        }
+        .modal-content h2 {
+            color: #38bdf8;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .modal-content p {
+            font-size: 22px;
+            margin-bottom: 25px;
+            font-weight: 500;
+        }
+        .modal-btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            background-color: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .modal-btn:hover {
+            background-color: #0369a1;
+        }
+
+        @keyframes scaleUp {
+            from { transform: scale(0.8); }
+            to { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-title">CF Seguros & Soluções</div>
+
+    <div class="wheel-container">
+        <canvas id="wheelCanvas" width="420" height="420"></canvas>
+        <div class="center-logo"></div>
+        <div class="pointer"></div>
+    </div>
+    
+    <button class="spin-btn" onclick="spinWheel()" id="spinBtn">Girar Roleta</button>
+
+    <!-- Modal de Resultado Bonito -->
+    <div class="modal" id="resultModal">
+        <div class="modal-content">
+            <h2>Parabéns! 🎉</h2>
+            <p id="winnerText">Você ganhou: Bombom</p>
+            <button class="modal-btn" onclick="closeModal()">Resgatar Prêmio</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("wheelCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // 1. CONFIGURAÇÃO DOS ITENS, PESOS E CORES COM GRADIENTES VISUAIS
+        const items = [
+            { text: "Bombom", weight: 75, color1: "#0284c7", color2: "#0369a1" },       
+            { text: "Chaveiro", weight: 10, color1: "#1e293b", color2: "#0f172a" },     
+            { text: "Garrafa", weight: 10, color1: "#0ea5e9", color2: "#0284c7" },      
+            { text: "Brinde 3", weight: 5, color1: "#334155", color2: "#1e293b" }       
+        ];
+
+        let currentAngle = 0;
+        const totalSlices = items.length;
+        const sliceAngle = (2 * Math.PI) / totalSlices;
+        let isSpinning = false;
+
+        function drawWheel(rotation = 0) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2;
+
+            for (let i = 0; i < totalSlices; i++) {
+                const startAngle = rotation + i * sliceAngle;
+                const endAngle = startAngle + sliceAngle;
+
+                // Criação de gradiente bonito para cada fatia
+                const sliceGradient = ctx.createRadialGradient(centerX, centerY, 40, centerX, centerY, radius);
+                sliceGradient.addColorStop(0, items[i].color1);
+                sliceGradient.addColorStop(1, items[i].color2);
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                ctx.fillStyle = sliceGradient;
+                ctx.fill();
+                
+                // Divisória sutil entre fatias
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+                ctx.stroke();
+
+                // Renderização do texto alinhado
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(startAngle + sliceAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 20px 'Segoe UI', Tahoma, sans-serif";
+                ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+                ctx.shadowBlur = 4;
+                ctx.fillText(items[i].text, radius - 35, 7); 
+                ctx.restore();
+            }
+        }
+
+        function spinWheel() {
+            if (isSpinning) return;
+            isSpinning = true;
+            document.getElementById("spinBtn").disabled = true;
+
+            const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
+            let randomNum = Math.random() * totalWeight;
+            let winningIndex = 0;
+
+            for (let i = 0; i < items.length; i++) {
+                randomNum -= items[i].weight;
+                if (randomNum <= 0) {
+                    winningIndex = i;
+                    break;
+                }
+            }
+
+            const sliceCenterAngle = winningIndex * sliceAngle + sliceAngle / 2;
+            const extraSpins = 7 * 2 * Math.PI; // 7 voltas completas
+            
+            const normalizedCurrentAngle = currentAngle % (2 * Math.PI);
+            const targetBaseRotation = (2 * Math.PI) - sliceCenterAngle;
+            
+            let rotationNeeded = targetBaseRotation - normalizedCurrentAngle;
+            if (rotationNeeded < 0) {
+                rotationNeeded += (2 * Math.PI);
+            }
+            
+            const totalDistance = extraSpins + rotationNeeded;
+            const startAngle = currentAngle; 
+
+            const duration = 4500; // 4.5 segundos de animação suave
+            let start = null;
+
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                const elapsed = timestamp - start;
+                
+                let progress = Math.min(elapsed / duration, 1);
+                // Curva de desaceleração customizada (easeOutQuart)
+                const easeOut = 1 - Math.pow(1 - progress, 4);
+                
+                currentAngle = startAngle + totalDistance * easeOut;
+                drawWheel(currentAngle);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isSpinning = false;
+                    document.getElementById("spinBtn").disabled = false;
+                    showModal(items[winningIndex].text);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function showModal(prize) {
+            document.getElementById("winnerText").innerText = `Você ganhou: ${prize}`;
+            document.getElementById("resultModal").classList.add("active");
+        }
+
+        function closeModal() {
+            document.getElementById("resultModal").classList.remove("active");
+        }
+
+        drawWheel();
+    </script>
+</body>
+</html>
