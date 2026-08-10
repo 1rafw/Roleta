@@ -175,7 +175,7 @@
     <div class="modal" id="resultModal">
         <div class="modal-content">
             <h2>Parabéns! 🎉</h2>
-            <p id="winnerText">Você ganhou: Bombom</p>
+            <p id="winnerText">Você ganhou: Opção 1</p>
             <button class="modal-btn" onclick="closeModal()">Resgatar Prêmio</button>
         </div>
     </div>
@@ -184,11 +184,12 @@
         const canvas = document.getElementById("wheelCanvas");
         const ctx = canvas.getContext("2d");
 
+        // 1. CONFIGURAÇÃO DOS ITENS EM MODO DE APRESENTAÇÃO
         const items = [
-            { text: "Bombom", weight: 75, color1: "#0284c7", color2: "#0369a1" },       
-            { text: "Chaveiro", weight: 10, color1: "#1e293b", color2: "#0f172a" },     
-            { text: "Garrafa", weight: 10, color1: "#0ea5e9", color2: "#0284c7" },      
-            { text: "Brinde 3", weight: 5, color1: "#334155", color2: "#1e293b" }       
+            { text: "Opção 1", weight: 75, color1: "#0284c7", color2: "#0369a1" },       
+            { text: "Opção 2", weight: 10, color1: "#1e293b", color2: "#0f172a" },     
+            { text: "Opção 3", weight: 10, color1: "#0ea5e9", color2: "#0284c7" },      
+            { text: "Opção 4", weight: 5, color1: "#334155", color2: "#1e293b" }       
         ];
 
         let currentAngle = 0;
@@ -226,10 +227,10 @@
                 const midAngle = startAngle + sliceAngle / 2;
                 ctx.rotate(midAngle);
 
-                // CORREÇÃO AQUI: Define a cor branca e a fonte ANTES de desenhar o texto!
+                // CONFIGURAÇÃO DA FONTE E COR ANTES DE DESENHAR O TEXTO (CORREÇÃO DE VISIBILIDADE)
                 ctx.fillStyle = "#ffffff";
                 ctx.font = "bold 20px 'Segoe UI', Tahoma, sans-serif";
-                ctx.shadowColor = "rgba(0, 0, 0, 0.8)"; // Sombra um pouco mais forte para destacar bem
+                ctx.shadowColor = "rgba(0, 0, 0, 0.8)"; 
                 ctx.shadowBlur = 4;
 
                 const normalizedAngle = (midAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
