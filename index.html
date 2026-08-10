@@ -185,10 +185,10 @@
         const ctx = canvas.getContext("2d");
 
         const items = [
-            { text: "Opção 1", weight: 75, color1: "#0284c7", color2: "#0369a1" },       
-            { text: "Opção 2", weight: 10, color1: "#1e293b", color2: "#0f172a" },     
-            { text: "Opção 3", weight: 10, color1: "#0ea5e9", color2: "#0284c7" },      
-            { text: "Opção 4", weight: 5, color1: "#334155", color2: "#1e293b" }       
+            { text: "Bombom", weight: 75, color1: "#0284c7", color2: "#0369a1" },       
+            { text: "Chaveiro", weight: 10, color1: "#1e293b", color2: "#0f172a" },     
+            { text: "Garrafa", weight: 10, color1: "#0ea5e9", color2: "#0284c7" },      
+            { text: "Brinde 3", weight: 5, color1: "#334155", color2: "#1e293b" }       
         ];
 
         let currentAngle = 0;
@@ -220,14 +220,18 @@
                 ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
                 ctx.stroke();
 
-                // Renderização inteligente para manter o texto sempre legível (em pé)
                 ctx.save();
                 ctx.translate(centerX, centerY);
                 
                 const midAngle = startAngle + sliceAngle / 2;
                 ctx.rotate(midAngle);
 
-                // Normaliza o ângulo para ver se a fatia está no lado esquerdo da roleta
+                // CORREÇÃO AQUI: Define a cor branca e a fonte ANTES de desenhar o texto!
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 20px 'Segoe UI', Tahoma, sans-serif";
+                ctx.shadowColor = "rgba(0, 0, 0, 0.8)"; // Sombra um pouco mais forte para destacar bem
+                ctx.shadowBlur = 4;
+
                 const normalizedAngle = (midAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
                 const isLeftHalf = normalizedAngle > Math.PI / 2 && normalizedAngle < (3 * Math.PI) / 2;
 
@@ -240,10 +244,6 @@
                     ctx.fillText(items[i].text, radius - 35, 7);
                 }
 
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 20px 'Segoe UI', Tahoma, sans-serif";
-                ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-                ctx.shadowBlur = 4;
                 ctx.restore();
             }
         }
