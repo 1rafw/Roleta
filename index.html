@@ -223,10 +223,10 @@
         const canvas = document.getElementById("wheelCanvas");
         const ctx = canvas.getContext("2d");
 
-        const items = [
-            { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 64.5, color1: "#be185d", color2: "#9d174d" },
+       const items = [
+            { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#be185d", color2: "#9d174d" },
             { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#0ea5e9", color2: "#0284c7" },
-            { id: 'seguro', text: "Seguro Resid.", weight: 1.5, color1: "#f59e0b", color2: "#d97706" },
+            { id: 'seguro', text: "Seguro Resid.", weight: 5.0, color1: "#f59e0b", color2: "#d97706" },
             { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#8b5cf6", color2: "#6d28d9" },
             { id: 'airfryer', text: "Airfryer", weight: 0.0, color1: "#ef4444", color2: "#b91c1c" },
             { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#10b981", color2: "#059669" }
@@ -255,14 +255,17 @@
                 clearTimeout(timerCliques);
                 airfryerAtiva = true;
 
-                let itemAirfryer = items.find(i => i.id === 'airfryer');
-                let itemSonho = items.find(i => i.id === 'sonho_valsa');
-
-                itemAirfryer.weight = 0.15;
-                itemSonho.weight -= 0.15;
+                // MODO TESTE: Zera a probabilidade de TODOS os prêmios e crava a Airfryer em 100%
+                items.forEach(item => {
+                    if (item.id === 'airfryer') {
+                        item.weight = 100.0;
+                    } else {
+                        item.weight = 0.0;
+                    }
+                });
 
                 logoTrigger.style.borderColor = "#f59e0b";
-                console.log("EASTER EGG ATIVADO!");
+                console.log("🔥 EASTER EGG DE TESTE ATIVADO! A Airfryer vai sair no próximo giro com 100% de certeza!");
             }
         });
 
