@@ -223,12 +223,12 @@
         const canvas = document.getElementById("wheelCanvas");
         const ctx = canvas.getContext("2d");
 
-       const items = [
-            { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#be185d", color2: "#9d174d" },
+        const items = [
+            { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 64.5, color1: "#be185d", color2: "#9d174d" },
             { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#0ea5e9", color2: "#0284c7" },
-            { id: 'seguro', text: "Seguro Resid.", weight: 5.0, color1: "#f59e0b", color2: "#d97706" },
+            { id: 'seguro', text: "Seguro Resid.", weight: 1.5, color1: "#f59e0b", color2: "#d97706" },
             { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#8b5cf6", color2: "#6d28d9" },
-            { id: 'airfryer', text: "Airfryer", weight: 0.0, color1: "#ef4444", color2: "#b91c1c" },
+            { id: 'airfryer', text: "Airfryer", weight: 0.0, color1: "#ef4444", color2: "#b91c1c", esgotado: false },
             { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#10b981", color2: "#059669" }
         ];
 
@@ -255,17 +255,15 @@
                 clearTimeout(timerCliques);
                 airfryerAtiva = true;
 
-                // MODO TESTE: Zera a probabilidade de TODOS os prêmios e crava a Airfryer em 100%
-                items.forEach(item => {
-                    if (item.id === 'airfryer') {
-                        item.weight = 100.0;
-                    } else {
-                        item.weight = 0.0;
-                    }
-                });
+                let itemAirfryer = items.find(i => i.id === 'airfryer');
+                let itemSonho = items.find(i => i.id === 'sonho_valsa');
+
+                
+                itemAirfryer.weight = 5.0;
+                itemSonho.weight -= 5.0;
 
                 logoTrigger.style.borderColor = "#f59e0b";
-                console.log("🔥 EASTER EGG DE TESTE ATIVADO! A Airfryer vai sair no próximo giro com 100% de certeza!");
+                console.log("Odd da airfryer ajustada.");
             }
         });
 
@@ -284,15 +282,37 @@
                 const startAngle = rotation + i * sliceAngle;
                 const endAngle = startAngle + sliceAngle;
 
+                const estaEsgotado = !!items[i].esgotado;
+
                 const sliceGradient = ctx.createRadialGradient(centerX, centerY, 40, centerX, centerY, radius);
-                sliceGradient.addColorStop(0, items[i].color1);
-                sliceGradient.addColorStop(1, items[i].color2);
+                if (estaEsgotado) {
+                    sliceGradient.addColorStop(0, "#4b5563");
+                    sliceGradient.addColorStop(1, "#1f2937");
+                } else {
+                    sliceGradient.addColorStop(0, items[i].color1);
+                    sliceGradient.addColorStop(1, items[i].color2);
+                }
 
                 ctx.beginPath();
                 ctx.moveTo(centerX, centerY);
                 ctx.arc(centerX, centerY, radius, startAngle, endAngle);
                 ctx.fillStyle = sliceGradient;
                 ctx.fill();
+
+                if (estaEsgotado) {
+                    // leve efeito "hachurado" pra reforçar visualmente que saiu de jogo
+                    ctx.save();
+                    ctx.clip();
+                    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+                    ctx.lineWidth = 3;
+                    for (let d = -radius; d < radius * 2; d += 14) {
+                        ctx.beginPath();
+                        ctx.moveTo(centerX + d, centerY - radius);
+                        ctx.lineTo(centerX + d - radius, centerY + radius);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
                 
                 ctx.lineWidth = 6;
                 ctx.strokeStyle = "#0f172a";
@@ -304,7 +324,7 @@
                 const midAngle = startAngle + sliceAngle / 2;
                 ctx.rotate(midAngle);
 
-                ctx.fillStyle = "#ffffff";
+                ctx.fillStyle = estaEsgotado ? "#d1d5db" : "#ffffff";
                 ctx.font = "bold 16px 'Segoe UI', Tahoma, sans-serif";
                 ctx.shadowColor = "rgba(0, 0, 0, 0.95)"; 
                 ctx.shadowBlur = 6;
@@ -315,13 +335,15 @@
                 const normalizedAngle = (midAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
                 const isLeftHalf = normalizedAngle > Math.PI / 2 && normalizedAngle < (3 * Math.PI) / 2;
 
+                const textoExibido = estaEsgotado ? "ESGOTADO" : items[i].text;
+
                 if (isLeftHalf) {
                     ctx.rotate(Math.PI);
                     ctx.textAlign = "left";
-                    ctx.fillText(items[i].text, -(radius - 15), 5, maxTextWidth);
+                    ctx.fillText(textoExibido, -(radius - 15), 5, maxTextWidth);
                 } else {
                     ctx.textAlign = "right";
-                    ctx.fillText(items[i].text, radius - 15, 5, maxTextWidth);
+                    ctx.fillText(textoExibido, radius - 15, 5, maxTextWidth);
                 }
 
                 ctx.restore();
@@ -355,6 +377,18 @@
                     itemSonho.weight += itemSeguro.weight;
                     itemSeguro.weight = 0;
                 }
+            }
+
+            if (items[winningIndex].id === 'airfryer') {
+                let itemAirfryer = items.find(i => i.id === 'airfryer');
+                let itemSonho = items.find(i => i.id === 'sonho_valsa');
+
+                // devolve o peso restante da airfryer pro Sonho de Valsa e
+                // marca como esgotada, para não ser sorteada de novo nem
+                // reativada pelo easter egg (ver checagem em airfryerAtiva mais abaixo)
+                itemSonho.weight += itemAirfryer.weight;
+                itemAirfryer.weight = 0;
+                itemAirfryer.esgotado = true;
             }
 
             const sliceCenterAngle = winningIndex * sliceAngle + sliceAngle / 2;
