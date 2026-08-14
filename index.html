@@ -452,7 +452,7 @@
         }
 
         function enviarParaSheets(registro, indice) {
-            fetch(SHEETS_ENDPOINT, {
+            fetch("https://script.google.com/macros/s/AKfycbyBiVbJiHmNEkMOKR46Jz3-NP4V_tohdzSl0CxJQEbs1gI6TbNj3BUsInMoTodj6yFGiQ/exec", {
                 method: 'POST',
                 // text/plain evita o preflight OPTIONS, que o Apps Script
                 // não trata bem e causaria erro de CORS.
