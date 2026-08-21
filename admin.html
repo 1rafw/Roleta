@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Painel de Controle - Roleta CF</title>
     <style>
         * {
@@ -172,6 +175,135 @@
         }
         .config-aviso.visivel { display: block; }
 
+        .historico-box {
+            margin-top: 24px;
+            background: rgba(244, 246, 249, 0.05);
+            border: 1px solid rgba(244, 246, 249, 0.12);
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+        .historico-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .historico-header h3 {
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .historico-lista {
+            max-height: 260px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .historico-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(244, 246, 249, 0.04);
+            font-size: 13px;
+        }
+        .historico-item .nome {
+            font-weight: 600;
+        }
+        .historico-item .hora {
+            color: rgba(244, 246, 249, 0.55);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .historico-vazio {
+            font-size: 13px;
+            color: rgba(244, 246, 249, 0.5);
+            text-align: center;
+            padding: 16px 0;
+        }
+
+        .ajustes-box {
+            margin-top: 24px;
+            background: rgba(244, 246, 249, 0.05);
+            border: 1px solid rgba(244, 246, 249, 0.12);
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+        .ajustes-box h3 {
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .ajustes-sub {
+            font-size: 12px;
+            color: rgba(244, 246, 249, 0.55);
+            margin-bottom: 16px;
+        }
+        .ajuste-linha {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 0;
+            border-top: 1px solid rgba(244, 246, 249, 0.08);
+            flex-wrap: wrap;
+        }
+        .ajuste-linha label {
+            font-size: 13px;
+            color: rgba(244, 246, 249, 0.85);
+        }
+        .ajuste-controles {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .ajuste-controles input {
+            width: 70px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(244, 246, 249, 0.2);
+            background: rgba(16, 16, 16, 0.4);
+            color: #F4F6F9;
+            font-size: 14px;
+        }
+        .ajuste-btn {
+            font-size: 12px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, #0072bb 0%, #075485 100%);
+            color: #F4F6F9;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .ajuste-btn.secundario {
+            background: rgba(244, 246, 249, 0.1);
+            border: 1px solid rgba(244, 246, 249, 0.2);
+        }
+        .ajuste-limpar {
+            display: block;
+            width: 100%;
+            margin-top: 14px;
+            text-align: center;
+        }
+        .ajuste-status {
+            font-size: 12px;
+            margin-top: 12px;
+            min-height: 16px;
+            text-align: center;
+            color: #4ade80;
+        }
+        .ajuste-status.erro {
+            color: #f87171;
+        }
+
         footer {
             text-align: center;
             font-size: 11px;
@@ -292,6 +424,40 @@
 
         <div class="lista-premios" id="listaPremios"></div>
 
+        <div class="historico-box">
+            <div class="historico-header">
+                <h3>Histórico Recente</h3>
+                <button class="ajuste-btn secundario" onclick="baixarCSV()" id="btnCSV">Baixar CSV completo</button>
+            </div>
+            <div class="historico-lista" id="historicoLista">
+                <div class="historico-vazio">Carregando...</div>
+            </div>
+        </div>
+
+        <div class="ajustes-box">
+            <h3>Ajustes Manuais</h3>
+            <p class="ajustes-sub">Use apenas se a contagem digital divergir do estoque físico real.</p>
+
+            <div class="ajuste-linha">
+                <label for="inputSeguroManual">Contagem do Seguro Residencial</label>
+                <div class="ajuste-controles">
+                    <input type="number" id="inputSeguroManual" min="0" max="10" placeholder="0-10">
+                    <button class="ajuste-btn" onclick="salvarAjusteSeguro()">Salvar</button>
+                </div>
+            </div>
+
+            <div class="ajuste-linha">
+                <label>Airfryer já foi sorteada?</label>
+                <div class="ajuste-controles">
+                    <button class="ajuste-btn" onclick="ajustarAirfryer(true)">Marcar como sorteada</button>
+                    <button class="ajuste-btn secundario" onclick="ajustarAirfryer(false)">Reabrir</button>
+                </div>
+            </div>
+
+            <button class="ajuste-btn secundario ajuste-limpar" onclick="limparAjustesManuais()">Remover todos os ajustes manuais</button>
+            <div class="ajuste-status" id="ajusteStatus"></div>
+        </div>
+
         <footer id="ultimaAtualizacao">Aguardando primeira atualização...</footer>
     </div>
 
@@ -299,8 +465,12 @@
         // ==========================================================
         // CONFIGURAÇÃO — use a MESMA URL do Apps Script usada no index.html
         // ==========================================================
-        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxm1TiCXeyLSeKLd5AoIaKt-N-gX_InBLeM3lhSZUHG6v8AHmnXTH2Mx_EWfbiuNKQNpw/exec";
+        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycby0uqtW5gOh88K6_izV4xbh_or87FXIbeysz-ptqprPIWQlSiapXL_Q2BgAIu1CryYf8g/exec";
         const INTERVALO_ATUALIZACAO_MS = 15000; // 15s
+
+        // Precisa ser IDÊNTICO ao TOKEN_SECRETO do Apps Script e ao
+        // API_TOKEN do index.html.
+        const API_TOKEN = "TROQUE_ESTE_TOKEN";
 
         // ==========================================================
         // SENHA DE ACESSO — troque por uma senha sua.
@@ -308,7 +478,7 @@
         // não é segurança de verdade (a senha fica visível no código-fonte
         // da página para quem souber procurar). Não use senha sensível aqui.
         // ==========================================================
-        const SENHA_PAINEL = "7v?,_7/R<.sx1";
+        const SENHA_PAINEL = "cf2026";
         const SESSAO_KEY = 'painel_cf_desbloqueado';
 
         function verificarSenha() {
@@ -410,9 +580,15 @@
 
             setStatus('carregando', 'Atualizando...');
 
-            fetch(SHEETS_ENDPOINT + '?t=' + Date.now())
+            fetch(SHEETS_ENDPOINT + '?t=' + Date.now() + '&token=' + encodeURIComponent(API_TOKEN))
                 .then(response => response.json())
                 .then(data => {
+                    if (data.status === 'erro') {
+                        console.error('Erro retornado pelo servidor:', data.mensagem);
+                        setStatus('erro', data.mensagem || 'Token inválido');
+                        return;
+                    }
+
                     const porPremio = data.porPremio || {};
                     const totalGiros = typeof data.totalGiros === 'number'
                         ? data.totalGiros
@@ -424,6 +600,14 @@
                     document.getElementById('segurosRestantes').textContent = Math.max(10 - seguroContagem, 0);
 
                     renderizarPremios(porPremio);
+                    renderizarHistorico(data.ultimosGiros || []);
+
+                    // Pré-preenche o campo de ajuste manual, só se o usuário
+                    // não estiver digitando nele agora (evita sobrescrever)
+                    const inputSeguro = document.getElementById('inputSeguroManual');
+                    if (document.activeElement !== inputSeguro) {
+                        inputSeguro.placeholder = String(porPremio.seguro || 0) + ' (atual)';
+                    }
 
                     setStatus('', 'Conectado');
                     const agora = new Date();
@@ -434,6 +618,126 @@
                     console.error('Erro ao consultar a planilha:', error);
                     setStatus('erro', 'Erro de conexão');
                 });
+        }
+
+        function nomeDoPremio(id) {
+            const cfg = CONFIG_PREMIOS.find(p => p.id === id);
+            return cfg ? cfg.nome : id;
+        }
+
+        function renderizarHistorico(lista) {
+            const container = document.getElementById('historicoLista');
+
+            if (!lista.length) {
+                container.innerHTML = '<div class="historico-vazio">Nenhum giro registrado ainda.</div>';
+                return;
+            }
+
+            container.innerHTML = lista.map(item => `
+                <div class="historico-item">
+                    <span class="nome">${item.nome || nomeDoPremio(item.id)}</span>
+                    <span class="hora">${item.dataHora}</span>
+                </div>
+            `).join('');
+        }
+
+        function baixarCSV() {
+            if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('SEU_ID_AQUI')) {
+                mostrarStatusAjuste('Endpoint não configurado.', true);
+                return;
+            }
+
+            const btn = document.getElementById('btnCSV');
+            const textoOriginal = btn.textContent;
+            btn.textContent = 'Gerando...';
+            btn.disabled = true;
+
+            fetch(SHEETS_ENDPOINT + '?t=' + Date.now() + '&token=' + encodeURIComponent(API_TOKEN) + '&completo=true')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'erro') {
+                        mostrarStatusAjuste(data.mensagem || 'Erro ao gerar CSV.', true);
+                        return;
+                    }
+
+                    const giros = data.todosGiros || [];
+                    const linhas = ['Data_Hora,ID_Premio,Nome_Premio'];
+                    giros.forEach(g => {
+                        // escapa vírgulas/aspas do nome do prêmio, por segurança
+                        const nomeEscapado = '"' + String(g.nome || '').replace(/"/g, '""') + '"';
+                        linhas.push(`${g.dataHora},${g.id},${nomeEscapado}`);
+                    });
+
+                    const csvConteudo = linhas.join('\n');
+                    const blob = new Blob([csvConteudo], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    const agora = new Date().toISOString().slice(0, 10);
+                    a.href = url;
+                    a.download = `roleta-cf-registros-${agora}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    console.error('Erro ao gerar CSV:', error);
+                    mostrarStatusAjuste('Erro de conexão ao gerar CSV.', true);
+                })
+                .finally(() => {
+                    btn.textContent = textoOriginal;
+                    btn.disabled = false;
+                });
+        }
+
+        function mostrarStatusAjuste(mensagem, erro) {
+            const el = document.getElementById('ajusteStatus');
+            el.textContent = mensagem;
+            el.className = 'ajuste-status' + (erro ? ' erro' : '');
+        }
+
+        function enviarAjuste(payload) {
+            if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('SEU_ID_AQUI')) {
+                mostrarStatusAjuste('Endpoint não configurado.', true);
+                return;
+            }
+            mostrarStatusAjuste('Salvando...', false);
+
+            fetch(SHEETS_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ ...payload, token: API_TOKEN })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'sucesso') {
+                    mostrarStatusAjuste('Ajuste salvo com sucesso.', false);
+                    atualizarPainel();
+                } else {
+                    mostrarStatusAjuste(data.mensagem || 'Falha ao salvar ajuste.', true);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao enviar ajuste:', error);
+                mostrarStatusAjuste('Erro de conexão ao salvar.', true);
+            });
+        }
+
+        function salvarAjusteSeguro() {
+            const valor = document.getElementById('inputSeguroManual').value;
+            if (valor === '' || isNaN(valor)) {
+                mostrarStatusAjuste('Digite um número válido (0 a 10).', true);
+                return;
+            }
+            enviarAjuste({ acao: 'ajustar_seguro', valor: Number(valor) });
+        }
+
+        function ajustarAirfryer(valor) {
+            enviarAjuste({ acao: 'ajustar_airfryer', valor: valor });
+        }
+
+        function limparAjustesManuais() {
+            enviarAjuste({ acao: 'limpar_ajustes' });
         }
 
         // Se já desbloqueou nesta aba/sessão antes, não pede de novo:

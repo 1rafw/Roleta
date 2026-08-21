@@ -3,6 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <!-- PWA: permite "Adicionar à tela inicial" no tablet do evento -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#075485">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Roleta CF">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" href="icon-192.png">
+
     <title>Roleta de Prêmios - CF Seguros</title>
     <style>
         * {
@@ -196,24 +210,24 @@
 
     <div class="status-bar" id="statusBar">
         <div class="status-dot" id="statusDot"></div>
-        <span id="statusText">Sincronizado</span>
+        <span id="statusText" aria-live="polite">Sincronizado</span>
     </div>
 
     <div class="header-title">Roleta CF</div>
 
     <div class="wheel-container">
-        <canvas id="wheelCanvas" width="420" height="420"></canvas>
-        <div class="center-logo" id="logo-trigger"></div>
-        <div class="pointer"></div>
+        <canvas id="wheelCanvas" width="420" height="420" role="img" aria-label="Roleta de prêmios CF Seguros"></canvas>
+        <div class="center-logo" id="logo-trigger" role="button" tabindex="0" aria-label="Logo CF Seguros"></div>
+        <div class="pointer" aria-hidden="true"></div>
     </div>
     
-    <button class="spin-btn" onclick="spinWheel()" id="spinBtn">Girar Roleta</button>
+    <button class="spin-btn" onclick="spinWheel()" id="spinBtn" aria-label="Girar a roleta de prêmios">Girar Roleta</button>
 
-    <div class="modal" id="resultModal">
+    <div class="modal" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo" aria-hidden="true">
         <div class="modal-content">
-            <h2>Parabéns! 🎉</h2>
-            <p id="winnerText"></p>
-            <button class="modal-btn" onclick="closeModal()">Resgatar Prêmio</button>
+            <h2 id="modalTitulo">Parabéns! 🎉</h2>
+            <p id="winnerText" aria-live="assertive"></p>
+            <button class="modal-btn" onclick="closeModal()" aria-label="Fechar e resgatar prêmio">Resgatar Prêmio</button>
         </div>
     </div>
 
@@ -221,7 +235,15 @@
         // ==========================================================
         // CONFIGURAÇÃO — troque pela URL do seu Apps Script (/exec)
         // ==========================================================
-        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxm1TiCXeyLSeKLd5AoIaKt-N-gX_InBLeM3lhSZUHG6v8AHmnXTH2Mx_EWfbiuNKQNpw/exec";
+        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycby0uqtW5gOh88K6_izV4xbh_or87FXIbeysz-ptqprPIWQlSiapXL_Q2BgAIu1CryYf8g/exec";
+
+        // ==========================================================
+        // TOKEN DE SEGURANÇA — precisa ser IDÊNTICO ao TOKEN_SECRETO
+        // definido no Apps Script (Código.gs) e ao API_TOKEN do admin.html.
+        // Sem isso, qualquer pessoa com a URL do /exec poderia mandar
+        // requisições falsas e sujar seus dados de inventário.
+        // ==========================================================
+        const API_TOKEN = "TROQUE_ESTE_TOKEN";
 
         const canvas = document.getElementById("wheelCanvas");
         const ctx = canvas.getContext("2d");
@@ -318,9 +340,9 @@
         // Requer um doGet() no Apps Script (veja instruções abaixo).
         // ==========================================================
         function sincronizarEstadoComSheets() {
-            if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('SEU_ID_AQUI')) return;
+            if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('https://script.google.com/macros/s/AKfycby0uqtW5gOh88K6_izV4xbh_or87FXIbeysz-ptqprPIWQlSiapXL_Q2BgAIu1CryYf8g/exec')) return;
 
-            fetch(SHEETS_ENDPOINT + '?t=' + Date.now())
+            fetch(SHEETS_ENDPOINT + '?t=' + Date.now() + '&token=' + encodeURIComponent(API_TOKEN))
                 .then(response => response.json())
                 .then(data => {
                     let mudou = false;
@@ -350,7 +372,8 @@
         }
 
         const logoTrigger = document.getElementById('logo-trigger');
-        logoTrigger.addEventListener('click', () => {
+
+        function acionarLogo() {
             if (airfryerAtiva) return;
 
             cliquesLogo++;
@@ -374,6 +397,15 @@
                 logoTrigger.style.borderColor = "#f59e0b";
                 console.log("EASTER EGG ATIVADO!");
                 salvarEstadoRoleta();
+            }
+        }
+
+        logoTrigger.addEventListener('click', acionarLogo);
+        // Suporte a teclado, já que o elemento agora é focável (tabindex)
+        logoTrigger.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                acionarLogo();
             }
         });
 
@@ -560,11 +592,132 @@
 
         function showModal(prize) {
             document.getElementById("winnerText").innerText = `Você ganhou: ${prize}`;
-            document.getElementById("resultModal").classList.add("active");
+            const modal = document.getElementById("resultModal");
+            modal.classList.add("active");
+            modal.setAttribute("aria-hidden", "false");
+
+            dispararConfete();
+            tocarSomVitoria();
         }
 
         function closeModal() {
-            document.getElementById("resultModal").classList.remove("active");
+            const modal = document.getElementById("resultModal");
+            modal.classList.remove("active");
+            modal.setAttribute("aria-hidden", "true");
+        }
+
+        // ==========================================================
+        // EFEITOS DE VITÓRIA — confete (canvas próprio, sem dependência
+        // externa) e som (gerado via Web Audio API, sem precisar de
+        // arquivo de áudio). Respeita "prefers-reduced-motion" para
+        // quem configurou o sistema pra reduzir animações.
+        // ==========================================================
+        function prefereReducedMotion() {
+            return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        }
+
+        let confeteCanvas = null;
+        let confeteCtx = null;
+
+        function dispararConfete() {
+            if (prefereReducedMotion()) return;
+
+            if (!confeteCanvas) {
+                confeteCanvas = document.createElement('canvas');
+                confeteCanvas.style.position = 'fixed';
+                confeteCanvas.style.top = '0';
+                confeteCanvas.style.left = '0';
+                confeteCanvas.style.width = '100%';
+                confeteCanvas.style.height = '100%';
+                confeteCanvas.style.pointerEvents = 'none';
+                confeteCanvas.style.zIndex = '200';
+                document.body.appendChild(confeteCanvas);
+                confeteCtx = confeteCanvas.getContext('2d');
+            }
+
+            confeteCanvas.width = window.innerWidth;
+            confeteCanvas.height = window.innerHeight;
+
+            const coresConfete = ['#0072bb', '#075485', '#4fb3e8', '#F4F6F9'];
+            const particulas = [];
+            const totalParticulas = 90;
+
+            for (let i = 0; i < totalParticulas; i++) {
+                particulas.push({
+                    x: confeteCanvas.width / 2,
+                    y: confeteCanvas.height / 2 - 100,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 1.6) * 12,
+                    tamanho: 4 + Math.random() * 5,
+                    cor: coresConfete[Math.floor(Math.random() * coresConfete.length)],
+                    rotacao: Math.random() * 360,
+                    velRotacao: (Math.random() - 0.5) * 12,
+                    vida: 0
+                });
+            }
+
+            const duracaoMs = 2600;
+            const inicio = performance.now();
+
+            function animarConfete(agora) {
+                const decorrido = agora - inicio;
+                confeteCtx.clearRect(0, 0, confeteCanvas.width, confeteCanvas.height);
+
+                particulas.forEach(p => {
+                    p.vy += 0.25; // gravidade
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.rotacao += p.velRotacao;
+
+                    confeteCtx.save();
+                    confeteCtx.translate(p.x, p.y);
+                    confeteCtx.rotate((p.rotacao * Math.PI) / 180);
+                    confeteCtx.fillStyle = p.cor;
+                    confeteCtx.globalAlpha = Math.max(0, 1 - decorrido / duracaoMs);
+                    confeteCtx.fillRect(-p.tamanho / 2, -p.tamanho / 2, p.tamanho, p.tamanho * 0.6);
+                    confeteCtx.restore();
+                });
+
+                if (decorrido < duracaoMs) {
+                    requestAnimationFrame(animarConfete);
+                } else {
+                    confeteCtx.clearRect(0, 0, confeteCanvas.width, confeteCanvas.height);
+                }
+            }
+
+            requestAnimationFrame(animarConfete);
+        }
+
+        function tocarSomVitoria() {
+            try {
+                const AudioContextRef = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextRef) return;
+                const ctxAudio = new AudioContextRef();
+                if (ctxAudio.state === 'suspended') {
+                    ctxAudio.resume();
+                }
+
+                // Pequeno arpejo ascendente (dó-mi-sol) como "chime" de vitória
+                const notas = [523.25, 659.25, 783.99];
+                notas.forEach((freq, i) => {
+                    const osc = ctxAudio.createOscillator();
+                    const ganho = ctxAudio.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+
+                    const inicioNota = ctxAudio.currentTime + i * 0.12;
+                    ganho.gain.setValueAtTime(0, inicioNota);
+                    ganho.gain.linearRampToValueAtTime(0.2, inicioNota + 0.02);
+                    ganho.gain.exponentialRampToValueAtTime(0.001, inicioNota + 0.5);
+
+                    osc.connect(ganho);
+                    ganho.connect(ctxAudio.destination);
+                    osc.start(inicioNota);
+                    osc.stop(inicioNota + 0.5);
+                });
+            } catch (erro) {
+                console.warn('Não foi possível tocar o som de vitória:', erro);
+            }
         }
 
         // ==========================================================
@@ -632,7 +785,7 @@
                 // text/plain evita o preflight OPTIONS, que o Apps Script
                 // não trata bem e causaria erro de CORS.
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ id: registro.id, nome: registro.nome, giroId: registro.giroId })
+                body: JSON.stringify({ id: registro.id, nome: registro.nome, giroId: registro.giroId, token: API_TOKEN })
             })
             .then(response => response.json())
             .then(() => {
@@ -678,6 +831,16 @@
         atualizarStatusBar();
         tentarResincronizar();
         sincronizarEstadoComSheets();
+
+        // Registro do Service Worker (necessário para "Adicionar à tela
+        // inicial" funcionar em modo standalone no Chrome/Android).
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch((erro) => {
+                    console.warn('Não foi possível registrar o service worker:', erro);
+                });
+            });
+        }
     </script>
 </body>
 </html>
