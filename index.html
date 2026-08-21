@@ -16,8 +16,8 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #ffffff;
+            background: linear-gradient(135deg, #101010 0%, #075485 100%);
+            color: #F4F6F9;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
         }
@@ -26,9 +26,11 @@
             font-size: 26px;
             font-weight: 600;
             letter-spacing: 1px;
-            color: #f8fafc;
+            color: #F4F6F9;
             text-transform: uppercase;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 100%;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.4);
         }
         .status-bar {
             position: fixed;
@@ -37,8 +39,8 @@
             font-size: 12px;
             padding: 6px 12px;
             border-radius: 20px;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(16, 16, 16, 0.6);
+            border: 1px solid rgba(244, 246, 249, 0.15);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -66,7 +68,7 @@
         }
         canvas {
             border-radius: 50%;
-            border: 6px solid #334155;
+            border: 6px solid #075485;
         }
         .center-logo {
             position: absolute;
@@ -75,7 +77,7 @@
             transform: translate(-50%, -50%);
             width: 120px;
             height: 120px;
-            background-color: #ffffff; 
+            background-color: #F4F6F9; 
             border-radius: 50%;
             background-image: url('Logo azul.png');
             background-size: 75%;
@@ -83,7 +85,7 @@
             background-repeat: no-repeat;
             z-index: 5;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0,0,0,0.1);
-            border: 4px solid #f8fafc;
+            border: 4px solid #F4F6F9;
             cursor: pointer;
         }
         .pointer {
@@ -95,7 +97,7 @@
             height: 0; 
             border-top: 16px solid transparent;
             border-bottom: 16px solid transparent;
-            border-right: 32px solid #38bdf8; 
+            border-right: 32px solid #0072bb; 
             z-index: 10;
             filter: drop-shadow(-3px 0px 4px rgba(0,0,0,0.4));
         }
@@ -103,27 +105,27 @@
             padding: 16px 48px;
             font-size: 20px;
             font-weight: bold;
-            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-            color: white;
+            background: linear-gradient(135deg, #0072bb 0%, #075485 100%);
+            color: #F4F6F9;
             border: none;
             border-radius: 50px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 114, 187, 0.4);
             text-transform: uppercase;
             letter-spacing: 1px;
             touch-action: manipulation;
         }
         .spin-btn:hover {
-            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
-            box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6);
+            background: linear-gradient(135deg, #075485 0%, #101010 100%);
+            box-shadow: 0 6px 20px rgba(0, 114, 187, 0.6);
             transform: translateY(-2px);
         }
         .spin-btn:active {
             transform: translateY(1px);
         }
         .spin-btn:disabled {
-            background: #475569;
+            background: #4b5563;
             cursor: not-allowed;
             box-shadow: none;
             transform: none;
@@ -135,7 +137,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(16, 16, 16, 0.75);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -149,17 +151,17 @@
             pointer-events: auto;
         }
         .modal-content {
-            background: rgba(30, 41, 59, 0.9);
+            background: rgba(16, 16, 16, 0.92);
             backdrop-filter: blur(10px);
             padding: 35px 50px;
             border-radius: 16px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(244, 246, 249, 0.15);
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
             animation: scaleUp 0.3s ease;
         }
         .modal-content h2 {
-            color: #38bdf8;
+            color: #0072bb;
             font-size: 28px;
             margin-bottom: 10px;
         }
@@ -167,12 +169,13 @@
             font-size: 22px;
             margin-bottom: 25px;
             font-weight: 500;
+            color: #F4F6F9;
         }
         .modal-btn {
             padding: 12px 30px;
             font-size: 16px;
-            background-color: #0284c7;
-            color: white;
+            background-color: #0072bb;
+            color: #F4F6F9;
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -180,7 +183,7 @@
             transition: background 0.2s;
         }
         .modal-btn:hover {
-            background-color: #0369a1;
+            background-color: #075485;
         }
 
         @keyframes scaleUp {
@@ -196,7 +199,7 @@
         <span id="statusText">Sincronizado</span>
     </div>
 
-    <div class="header-title">CF Seguros & Soluções</div>
+    <div class="header-title">Roleta CF</div>
 
     <div class="wheel-container">
         <canvas id="wheelCanvas" width="420" height="420"></canvas>
@@ -215,20 +218,23 @@
     </div>
 
     <script>
-   
-        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/SEU_ID_AQUI/exec";
+        // ==========================================================
+        // CONFIGURAÇÃO — troque pela URL do seu Apps Script (/exec)
+        // ==========================================================
+        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxm1TiCXeyLSeKLd5AoIaKt-N-gX_InBLeM3lhSZUHG6v8AHmnXTH2Mx_EWfbiuNKQNpw/exec";
 
         const canvas = document.getElementById("wheelCanvas");
         const ctx = canvas.getContext("2d");
 
         const items = [
-            { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 64.5, color1: "#be185d", color2: "#9d174d" },
-            { id: 'caneta', text: "Caneta", weight: 20.0, color1: "#0ea5e9", color2: "#0284c7" },
-            { id: 'seguro', text: "Seguro Resid.", weight: 1.5, color1: "#f59e0b", color2: "#d97706" },
-            { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#8b5cf6", color2: "#6d28d9" },
-            { id: 'garrafa', text: "Mochila", weight: 11.0, color1: "#10b981", color2: "#059669" },
-            { id: 'airfryer', text: "Airfryer", weight: 0.0, color1: "#ef4444", color2: "#b91c1c", esgotado: false },
-            
+            // Sonho de Valsa reduzido de 64.5 para 61.0 para compensar o aumento do Seguro
+            { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#0072bb", color2: "#075485" },
+            { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#075485", color2: "#043a5c" },
+            // Seguro Residencial aumentado de 1.5 para 5.0
+            { id: 'seguro', text: "Seguro Resid.", weight: 5.0, color1: "#2f9ade", color2: "#0072bb", esgotado: false },
+            { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#4fb3e8", color2: "#0072bb" },
+            { id: 'airfryer', text: "Airfryer", weight: 0.0, color1: "#101010", color2: "#000000", esgotado: false },
+            { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#0a6aa8", color2: "#075485" }
         ];
 
         let contadorSeguro = 0;
@@ -237,6 +243,111 @@
         let cliquesLogo = 0;
         let timerCliques = null;
         let airfryerAtiva = false;
+
+        // ==========================================================
+        // PERSISTÊNCIA DE ESTADO DA ROLETA (esgotados, contador, easter egg)
+        // Garante que, se o navegador/tablet for reiniciado no meio do
+        // evento, os prêmios já esgotados continuem esgotados.
+        // ==========================================================
+        const STORAGE_KEY_ESTADO = 'estado_roleta_cf';
+
+        function salvarEstadoRoleta() {
+            const estado = {
+                pesos: items.map(i => ({ id: i.id, weight: i.weight, esgotado: !!i.esgotado })),
+                contadorSeguro,
+                airfryerAtiva
+            };
+            localStorage.setItem(STORAGE_KEY_ESTADO, JSON.stringify(estado));
+        }
+
+        function carregarEstadoRoleta() {
+            try {
+                const salvo = JSON.parse(localStorage.getItem(STORAGE_KEY_ESTADO) || 'null');
+                if (!salvo) return;
+
+                salvo.pesos.forEach(p => {
+                    const item = items.find(i => i.id === p.id);
+                    if (item) {
+                        item.weight = p.weight;
+                        item.esgotado = !!p.esgotado;
+                    }
+                });
+
+                contadorSeguro = salvo.contadorSeguro || 0;
+                airfryerAtiva = !!salvo.airfryerAtiva;
+
+                if (airfryerAtiva) {
+                    logoTrigger.style.borderColor = "#f59e0b";
+                }
+            } catch (e) {
+                console.warn('Não foi possível restaurar o estado da roleta:', e);
+            }
+        }
+
+        // Zera o peso do Seguro Residencial, transfere para o Sonho de Valsa
+        // e marca como esgotado (efeito visual cinza). Idempotente: chamar
+        // de novo não tem efeito colateral se já estiver esgotado.
+        function aplicarEsgotamentoSeguro() {
+            const itemSeguro = items.find(i => i.id === 'seguro');
+            const itemSonho = items.find(i => i.id === 'sonho_valsa');
+            if (itemSeguro.esgotado) return;
+
+            itemSonho.weight += itemSeguro.weight;
+            itemSeguro.weight = 0;
+            itemSeguro.esgotado = true;
+        }
+
+        // Mesma lógica para a Airfryer: zera peso, devolve pro Sonho de
+        // Valsa, marca esgotada e trava o easter egg (não reativa mais).
+        function aplicarEsgotamentoAirfryer() {
+            const itemAirfryer = items.find(i => i.id === 'airfryer');
+            const itemSonho = items.find(i => i.id === 'sonho_valsa');
+            if (!itemAirfryer.esgotado) {
+                itemSonho.weight += itemAirfryer.weight;
+                itemAirfryer.weight = 0;
+                itemAirfryer.esgotado = true;
+            }
+            airfryerAtiva = true;
+        }
+
+        // ==========================================================
+        // SINCRONIZAÇÃO COM O GOOGLE SHEETS (camada extra de segurança)
+        // Consulta a planilha (fonte da verdade) via doGet e reconcilia
+        // com o estado local — útil se o tablet trocar de navegador,
+        // limpar dados, ou for substituído por outro no meio do evento.
+        // Requer um doGet() no Apps Script (veja instruções abaixo).
+        // ==========================================================
+        function sincronizarEstadoComSheets() {
+            if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('SEU_ID_AQUI')) return;
+
+            fetch(SHEETS_ENDPOINT + '?t=' + Date.now())
+                .then(response => response.json())
+                .then(data => {
+                    let mudou = false;
+
+                    if (typeof data.contadorSeguro === 'number' && data.contadorSeguro > contadorSeguro) {
+                        contadorSeguro = data.contadorSeguro;
+                        mudou = true;
+                    }
+                    if (contadorSeguro >= LIMITE_SEGURO && !items.find(i => i.id === 'seguro').esgotado) {
+                        aplicarEsgotamentoSeguro();
+                        mudou = true;
+                    }
+                    if (data.airfryerGanha && !items.find(i => i.id === 'airfryer').esgotado) {
+                        aplicarEsgotamentoAirfryer();
+                        mudou = true;
+                    }
+
+                    if (mudou) {
+                        salvarEstadoRoleta();
+                        drawWheel(currentAngle);
+                        console.log('Estado sincronizado com a planilha.');
+                    }
+                })
+                .catch(error => {
+                    console.warn('Não foi possível sincronizar estado com a planilha:', error);
+                });
+        }
 
         const logoTrigger = document.getElementById('logo-trigger');
         logoTrigger.addEventListener('click', () => {
@@ -257,12 +368,12 @@
                 let itemAirfryer = items.find(i => i.id === 'airfryer');
                 let itemSonho = items.find(i => i.id === 'sonho_valsa');
 
-                
-                itemAirfryer.weight = 5.0;
-                itemSonho.weight -= 5.0;
+                itemAirfryer.weight = 0.15;
+                itemSonho.weight -= 0.15;
 
                 logoTrigger.style.borderColor = "#f59e0b";
-                console.log("Odd da airfryer ajustada.");
+                console.log("EASTER EGG ATIVADO!");
+                salvarEstadoRoleta();
             }
         });
 
@@ -299,7 +410,7 @@
                 ctx.fill();
 
                 if (estaEsgotado) {
-                 
+                    // leve efeito "hachurado" pra reforçar visualmente que saiu de jogo
                     ctx.save();
                     ctx.clip();
                     ctx.strokeStyle = "rgba(0,0,0,0.35)";
@@ -314,7 +425,7 @@
                 }
                 
                 ctx.lineWidth = 6;
-                ctx.strokeStyle = "#0f172a";
+                ctx.strokeStyle = "#101010";
                 ctx.stroke();
 
                 ctx.save();
@@ -323,30 +434,57 @@
                 const midAngle = startAngle + sliceAngle / 2;
                 ctx.rotate(midAngle);
 
-                ctx.fillStyle = estaEsgotado ? "#d1d5db" : "#ffffff";
-                ctx.font = "bold 16px 'Segoe UI', Tahoma, sans-serif";
+                ctx.fillStyle = estaEsgotado ? "#9ca3af" : "#F4F6F9";
+                ctx.font = "bold 15px 'Segoe UI', Tahoma, sans-serif";
                 ctx.shadowColor = "rgba(0, 0, 0, 0.95)"; 
                 ctx.shadowBlur = 6;
                 ctx.shadowOffsetX = 1;
                 ctx.shadowOffsetY = 1;
 
-                const maxTextWidth = 125; 
+                const maxTextWidth = 110; 
+                const lineHeight = 17;
                 const normalizedAngle = (midAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
                 const isLeftHalf = normalizedAngle > Math.PI / 2 && normalizedAngle < (3 * Math.PI) / 2;
 
                 const textoExibido = estaEsgotado ? "ESGOTADO" : items[i].text;
+                const linhas = quebrarTextoEmLinhas(ctx, textoExibido, maxTextWidth);
+                const offsetInicial = -((linhas.length - 1) * lineHeight) / 2;
 
                 if (isLeftHalf) {
                     ctx.rotate(Math.PI);
                     ctx.textAlign = "left";
-                    ctx.fillText(textoExibido, -(radius - 15), 5, maxTextWidth);
+                    linhas.forEach((linha, idx) => {
+                        ctx.fillText(linha, -(radius - 15), offsetInicial + idx * lineHeight, maxTextWidth);
+                    });
                 } else {
                     ctx.textAlign = "right";
-                    ctx.fillText(textoExibido, radius - 15, 5, maxTextWidth);
+                    linhas.forEach((linha, idx) => {
+                        ctx.fillText(linha, radius - 15, offsetInicial + idx * lineHeight, maxTextWidth);
+                    });
                 }
 
                 ctx.restore();
             }
+        }
+
+        // Quebra o texto do prêmio em várias linhas para caber bem
+        // dentro da fatia da roleta, em vez de espremer tudo numa linha só.
+        function quebrarTextoEmLinhas(ctx, texto, larguraMaxima) {
+            const palavras = texto.split(' ');
+            const linhas = [];
+            let linhaAtual = palavras[0] || '';
+
+            for (let i = 1; i < palavras.length; i++) {
+                const linhaTeste = linhaAtual + ' ' + palavras[i];
+                if (ctx.measureText(linhaTeste).width > larguraMaxima && linhaAtual !== '') {
+                    linhas.push(linhaAtual);
+                    linhaAtual = palavras[i];
+                } else {
+                    linhaAtual = linhaTeste;
+                }
+            }
+            linhas.push(linhaAtual);
+            return linhas;
         }
 
         function spinWheel() {
@@ -368,24 +506,15 @@
 
             if (items[winningIndex].id === 'seguro') {
                 contadorSeguro++;
-                
                 if (contadorSeguro >= LIMITE_SEGURO) {
-                    let itemSeguro = items.find(i => i.id === 'seguro');
-                    let itemSonho = items.find(i => i.id === 'sonho_valsa');
-
-                    itemSonho.weight += itemSeguro.weight;
-                    itemSeguro.weight = 0;
+                    aplicarEsgotamentoSeguro();
                 }
+                salvarEstadoRoleta();
             }
 
             if (items[winningIndex].id === 'airfryer') {
-                let itemAirfryer = items.find(i => i.id === 'airfryer');
-                let itemSonho = items.find(i => i.id === 'sonho_valsa');
-
-            
-                itemSonho.weight += itemAirfryer.weight;
-                itemAirfryer.weight = 0;
-                itemAirfryer.esgotado = true;
+                aplicarEsgotamentoAirfryer();
+                salvarEstadoRoleta();
             }
 
             const sliceCenterAngle = winningIndex * sliceAngle + sliceAngle / 2;
@@ -438,7 +567,9 @@
             document.getElementById("resultModal").classList.remove("active");
         }
 
-    
+        // ==========================================================
+        // REGISTRO DE PRÊMIOS — Google Sheets + fallback localStorage
+        // ==========================================================
         const STORAGE_KEY = 'historico_premios_cf';
 
         function getHistorico() {
@@ -473,6 +604,7 @@
             const historico = getHistorico();
             const registro = {
                 ...premio,
+                giroId: gerarIdGiro(),
                 timestamp: new Date().toISOString(),
                 sincronizado: false
             };
@@ -483,12 +615,24 @@
             enviarParaSheets(registro, historico.length - 1);
         }
 
+        // Gera um ID único por giro. Isso é o que permite ao Apps Script
+        // detectar reenvios (ex: fetch que "parece" ter falhado por timeout
+        // mas na verdade já tinha chegado) e não duplicar a linha na planilha.
+        function gerarIdGiro() {
+            if (window.crypto && window.crypto.randomUUID) {
+                return window.crypto.randomUUID();
+            }
+            // fallback para navegadores mais antigos sem crypto.randomUUID
+            return 'giro-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+        }
+
         function enviarParaSheets(registro, indice) {
-            fetch("https://script.google.com/macros/s/AKfycbyBiVbJiHmNEkMOKR46Jz3-NP4V_tohdzSl0CxJQEbs1gI6TbNj3BUsInMoTodj6yFGiQ/exec", {
+            fetch(SHEETS_ENDPOINT, {
                 method: 'POST',
-              
+                // text/plain evita o preflight OPTIONS, que o Apps Script
+                // não trata bem e causaria erro de CORS.
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ id: registro.id, nome: registro.nome })
+                body: JSON.stringify({ id: registro.id, nome: registro.nome, giroId: registro.giroId })
             })
             .then(response => response.json())
             .then(() => {
@@ -520,6 +664,7 @@
         window.addEventListener('online', () => {
             document.getElementById('statusDot').classList.remove('offline');
             tentarResincronizar();
+            sincronizarEstadoComSheets();
         });
 
         window.addEventListener('offline', () => {
@@ -528,9 +673,11 @@
         });
 
         // Inicialização
+        carregarEstadoRoleta();
         drawWheel();
         atualizarStatusBar();
         tentarResincronizar();
+        sincronizarEstadoComSheets();
     </script>
 </body>
 </html>

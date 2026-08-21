@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Roleta CF</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #101010 0%, #075485 100%);
+            color: #F4F6F9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 24px 16px 60px;
+        }
+        .wrapper {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        header h1 {
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        header p {
+            font-size: 13px;
+            color: rgba(244, 246, 249, 0.65);
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(244, 246, 249, 0.08);
+            border: 1px solid rgba(244, 246, 249, 0.15);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+        .status-dot.erro { background: #ef4444; }
+        .status-dot.carregando { background: #f59e0b; }
+
+        .refresh-btn {
+            font-size: 13px;
+            padding: 8px 18px;
+            border-radius: 20px;
+            border: none;
+            background: linear-gradient(135deg, #0072bb 0%, #075485 100%);
+            color: #F4F6F9;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .refresh-btn:active { transform: scale(0.96); }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .summary-card {
+            background: rgba(244, 246, 249, 0.06);
+            border: 1px solid rgba(244, 246, 249, 0.12);
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+        }
+        .summary-card .valor {
+            font-size: 32px;
+            font-weight: 700;
+            color: #4fb3e8;
+            line-height: 1.1;
+        }
+        .summary-card .rotulo {
+            font-size: 12px;
+            color: rgba(244, 246, 249, 0.65);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .lista-premios {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .premio-card {
+            background: rgba(244, 246, 249, 0.06);
+            border: 1px solid rgba(244, 246, 249, 0.12);
+            border-radius: 12px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .premio-card.alerta {
+            border-color: rgba(239, 68, 68, 0.5);
+            background: rgba(239, 68, 68, 0.08);
+        }
+        .premio-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .premio-cor {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .premio-nome {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .premio-sub {
+            font-size: 12px;
+            color: rgba(244, 246, 249, 0.6);
+            margin-top: 2px;
+        }
+        .premio-contagem {
+            font-size: 20px;
+            font-weight: 700;
+            color: #F4F6F9;
+            text-align: right;
+        }
+        .badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 3px 10px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        .badge.ok { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .badge.esgotado { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+        .config-aviso {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            color: #fbbf24;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .config-aviso.visivel { display: block; }
+
+        footer {
+            text-align: center;
+            font-size: 11px;
+            color: rgba(244, 246, 249, 0.4);
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <header>
+            <h1>Painel de Controle</h1>
+            <p>Roleta CF Seguros &amp; Soluções — inventário em tempo real</p>
+        </header>
+
+        <div class="config-aviso" id="configAviso">
+            ⚠️ Configure o <code>SHEETS_ENDPOINT</code> no início do script deste arquivo com a URL do seu Apps Script.
+        </div>
+
+        <div class="top-bar">
+            <div class="status-pill">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Carregando...</span>
+            </div>
+            <button class="refresh-btn" onclick="atualizarPainel()">Atualizar agora</button>
+        </div>
+
+        <div class="summary">
+            <div class="summary-card">
+                <div class="valor" id="totalGiros">—</div>
+                <div class="rotulo">Giros totais</div>
+            </div>
+            <div class="summary-card">
+                <div class="valor" id="segurosRestantes">—</div>
+                <div class="rotulo">Seguros restantes</div>
+            </div>
+        </div>
+
+        <div class="lista-premios" id="listaPremios"></div>
+
+        <footer id="ultimaAtualizacao">Aguardando primeira atualização...</footer>
+    </div>
+
+    <script>
+        // ==========================================================
+        // CONFIGURAÇÃO — use a MESMA URL do Apps Script usada no index.html
+        // ==========================================================
+        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxm1TiCXeyLSeKLd5AoIaKt-N-gX_InBLeM3lhSZUHG6v8AHmnXTH2Mx_EWfbiuNKQNpw/exec";
+        const INTERVALO_ATUALIZACAO_MS = 15000; // 15s
+
+        // Espelha a lista de prêmios do index.html só para exibição
+        // (nome, cor e limite). Se você mudar os prêmios lá, replique aqui.
+        const CONFIG_PREMIOS = [
+            { id: 'sonho_valsa', nome: 'Sonho de Valsa', cor: '#0072bb' },
+            { id: 'kit', nome: 'Kit Caneta + Agenda', cor: '#075485' },
+            { id: 'seguro', nome: 'Seguro Resid.', cor: '#2f9ade', limite: 10 },
+            { id: 'caixa_som', nome: 'Caixa de Som', cor: '#4fb3e8' },
+            { id: 'airfryer', nome: 'Airfryer', cor: '#101010', unico: true },
+            { id: 'garrafa', nome: 'Garrafa Squeeze', cor: '#0a6aa8' }
+        ];
+
+        function setStatus(estado, texto) {
+            const dot = document.getElementById('statusDot');
+            dot.className = 'status-dot' + (estado ? ' ' + estado : '');
+            document.getElementById('statusText').textContent = texto;
+        }
+
+        function renderizarPremios(porPremio) {
+            const container = document.getElementById('listaPremios');
+            container.innerHTML = '';
+
+            CONFIG_PREMIOS.forEach(cfg => {
+                const contagem = (porPremio && porPremio[cfg.id]) || 0;
+                const card = document.createElement('div');
+                card.className = 'premio-card';
+
+                let subInfo = `${contagem} sorteado(s)`;
+                let badgeHtml = '';
+
+                if (cfg.limite) {
+                    const restante = Math.max(cfg.limite - contagem, 0);
+                    subInfo = `${contagem} de ${cfg.limite} sorteados`;
+                    if (restante === 0) {
+                        card.classList.add('alerta');
+                        badgeHtml = '<div class="badge esgotado">Esgotado</div>';
+                    } else {
+                        badgeHtml = `<div class="badge ok">${restante} restante(s)</div>`;
+                    }
+                } else if (cfg.unico) {
+                    if (contagem > 0) {
+                        card.classList.add('alerta');
+                        badgeHtml = '<div class="badge esgotado">Já sorteada</div>';
+                    } else {
+                        badgeHtml = '<div class="badge ok">Disponível</div>';
+                    }
+                }
+
+                card.innerHTML = `
+                    <div class="premio-info">
+                        <div class="premio-cor" style="background:${cfg.cor}"></div>
+                        <div>
+                            <div class="premio-nome">${cfg.nome}</div>
+                            <div class="premio-sub">${subInfo}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="premio-contagem">${contagem}</div>
+                        ${badgeHtml}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function atualizarPainel() {
+            if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('SEU_ID_AQUI')) {
+                document.getElementById('configAviso').classList.add('visivel');
+                setStatus('erro', 'Não configurado');
+                return;
+            }
+
+            setStatus('carregando', 'Atualizando...');
+
+            fetch(SHEETS_ENDPOINT + '?t=' + Date.now())
+                .then(response => response.json())
+                .then(data => {
+                    const porPremio = data.porPremio || {};
+                    const totalGiros = typeof data.totalGiros === 'number'
+                        ? data.totalGiros
+                        : Object.values(porPremio).reduce((a, b) => a + b, 0);
+
+                    document.getElementById('totalGiros').textContent = totalGiros;
+
+                    const seguroContagem = porPremio.seguro || 0;
+                    document.getElementById('segurosRestantes').textContent = Math.max(10 - seguroContagem, 0);
+
+                    renderizarPremios(porPremio);
+
+                    setStatus('', 'Conectado');
+                    const agora = new Date();
+                    document.getElementById('ultimaAtualizacao').textContent =
+                        'Última atualização: ' + agora.toLocaleTimeString('pt-BR');
+                })
+                .catch(error => {
+                    console.error('Erro ao consultar a planilha:', error);
+                    setStatus('erro', 'Erro de conexão');
+                });
+        }
+
+        // Primeira carga + atualização periódica
+        atualizarPainel();
+        setInterval(atualizarPainel, INTERVALO_ATUALIZACAO_MS);
+    </script>
+</body>
+</html>
