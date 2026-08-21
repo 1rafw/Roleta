@@ -178,9 +178,89 @@
             color: rgba(244, 246, 249, 0.4);
             margin-top: 30px;
         }
+
+        .lock-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #101010 0%, #075485 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 20px;
+        }
+        .lock-box {
+            background: rgba(244, 246, 249, 0.06);
+            border: 1px solid rgba(244, 246, 249, 0.15);
+            border-radius: 16px;
+            padding: 36px 32px;
+            text-align: center;
+            max-width: 320px;
+            width: 100%;
+        }
+        .lock-box h2 {
+            font-size: 18px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .lock-box p {
+            font-size: 13px;
+            color: rgba(244, 246, 249, 0.6);
+            margin-bottom: 20px;
+        }
+        .lock-box input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(244, 246, 249, 0.2);
+            background: rgba(16, 16, 16, 0.4);
+            color: #F4F6F9;
+            font-size: 16px;
+            margin-bottom: 12px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        .lock-box input:focus {
+            outline: none;
+            border-color: #0072bb;
+        }
+        .lock-box button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, #0072bb 0%, #075485 100%);
+            color: #F4F6F9;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .lock-erro {
+            color: #f87171;
+            font-size: 13px;
+            margin-top: 10px;
+            min-height: 16px;
+        }
+        body.travado {
+            overflow: hidden;
+        }
     </style>
 </head>
-<body>
+<body class="travado">
+    <div class="lock-screen" id="lockScreen">
+        <div class="lock-box">
+            <h2>Painel Restrito</h2>
+            <p>Digite a senha de acesso para continuar</p>
+            <input type="password" id="senhaInput" placeholder="Senha" autofocus>
+            <button onclick="verificarSenha()">Entrar</button>
+            <div class="lock-erro" id="lockErro"></div>
+        </div>
+    </div>
+
     <div class="wrapper">
         <header>
             <h1>Painel de Controle</h1>
@@ -221,6 +301,41 @@
         // ==========================================================
         const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxm1TiCXeyLSeKLd5AoIaKt-N-gX_InBLeM3lhSZUHG6v8AHmnXTH2Mx_EWfbiuNKQNpw/exec";
         const INTERVALO_ATUALIZACAO_MS = 15000; // 15s
+
+        // ==========================================================
+        // SENHA DE ACESSO — troque por uma senha sua.
+        // Atenção: isso é só uma barreira simples contra acesso casual,
+        // não é segurança de verdade (a senha fica visível no código-fonte
+        // da página para quem souber procurar). Não use senha sensível aqui.
+        // ==========================================================
+        const SENHA_PAINEL = "7v?,_7/R<.s"x1";
+        const SESSAO_KEY = 'painel_cf_desbloqueado';
+
+        function verificarSenha() {
+            const digitada = document.getElementById('senhaInput').value;
+            const erro = document.getElementById('lockErro');
+
+            if (digitada === SENHA_PAINEL) {
+                sessionStorage.setItem(SESSAO_KEY, 'sim');
+                desbloquearPainel();
+            } else {
+                erro.textContent = 'Senha incorreta. Tente novamente.';
+                document.getElementById('senhaInput').value = '';
+                document.getElementById('senhaInput').focus();
+            }
+        }
+
+        function desbloquearPainel() {
+            document.getElementById('lockScreen').style.display = 'none';
+            document.body.classList.remove('travado');
+            atualizarPainel();
+            setInterval(atualizarPainel, INTERVALO_ATUALIZACAO_MS);
+        }
+
+        // Permite apertar Enter no campo de senha em vez de clicar no botão
+        document.getElementById('senhaInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') verificarSenha();
+        });
 
         // Espelha a lista de prêmios do index.html só para exibição
         // (nome, cor e limite). Se você mudar os prêmios lá, replique aqui.
@@ -321,9 +436,14 @@
                 });
         }
 
-        // Primeira carga + atualização periódica
-        atualizarPainel();
-        setInterval(atualizarPainel, INTERVALO_ATUALIZACAO_MS);
+        // Se já desbloqueou nesta aba/sessão antes, não pede de novo:
+        // remove o overlay e já inicia a atualização dos dados.
+        if (sessionStorage.getItem(SESSAO_KEY) === 'sim') {
+            document.getElementById('lockScreen').style.display = 'none';
+            document.body.classList.remove('travado');
+            atualizarPainel();
+            setInterval(atualizarPainel, INTERVALO_ATUALIZACAO_MS);
+        }
     </script>
 </body>
 </html>
