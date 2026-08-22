@@ -204,6 +204,79 @@
             from { transform: scale(0.8); }
             to { transform: scale(1); }
         }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .qr-block {
+            display: none;
+            margin: 4px 0 20px;
+            text-align: center;
+        }
+        .qr-block.visivel {
+            display: block;
+        }
+        .qr-info {
+            font-size: 14px;
+            font-weight: 400;
+            margin-bottom: 16px;
+            color: rgba(244, 246, 249, 0.85);
+        }
+        .qr-codigo {
+            background: #F4F6F9;
+            display: inline-block;
+            padding: 12px;
+            border-radius: 12px;
+            line-height: 0;
+        }
+        .qr-codigo svg {
+            width: 170px;
+            height: 170px;
+            display: block;
+        }
+        .qr-link-alt {
+            font-size: 12px;
+            color: rgba(244, 246, 249, 0.55);
+            margin-top: 14px;
+        }
+        .qr-copiar-btn {
+            margin-top: 8px;
+            font-size: 12px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(244, 246, 249, 0.25);
+            background: transparent;
+            color: #F4F6F9;
+            cursor: pointer;
+        }
+        .qr-copiar-status {
+            font-size: 12px;
+            color: #4ade80;
+            margin-top: 6px;
+            min-height: 14px;
+        }
+        .modal-btn-fechar.secundario-fechar {
+            background-color: transparent;
+            border: 1px solid rgba(244, 246, 249, 0.3);
+            margin-top: 8px;
+        }
+
+        .modal-content.especial {
+            border-color: rgba(245, 158, 11, 0.6);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 40px rgba(245, 158, 11, 0.25);
+        }
+        .modal-content.especial h2 {
+            color: #f59e0b;
+        }
     </style>
 </head>
 <body>
@@ -223,13 +296,31 @@
     
     <button class="spin-btn" onclick="spinWheel()" id="spinBtn" aria-label="Girar a roleta de prêmios">Girar Roleta</button>
 
+    <!-- A região de anúncio pra leitor de tela agora é criada dinamicamente
+         em JS (função anunciarParaLeitorDeTela) e removida do DOM logo em
+         seguida — ver comentário na função pra entender o motivo. -->
+
     <div class="modal" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo" aria-hidden="true">
-        <div class="modal-content">
+        <div class="modal-content" id="modalContent">
             <h2 id="modalTitulo">Parabéns! 🎉</h2>
-            <p id="winnerText" aria-live="assertive"></p>
-            <button class="modal-btn" onclick="closeModal()" aria-label="Fechar e resgatar prêmio">Resgatar Prêmio</button>
+            <p id="winnerText"></p>
+
+            <div class="qr-block" id="qrBlock">
+                <p class="qr-info">Escaneie com o celular pra deixar seus dados — entramos em contato pra fechar o Seguro Residencial:</p>
+                <div class="qr-codigo" id="qrCodigo"></div>
+                <div class="qr-link-alt">Não conseguiu escanear?</div>
+                <button class="qr-copiar-btn" onclick="copiarLinkFormulario()" id="btnCopiarLink">Copiar link do formulário</button>
+                <div class="qr-copiar-status" id="qrCopiarStatus"></div>
+            </div>
+
+            <button class="modal-btn modal-btn-fechar" onclick="closeModal()" id="btnFecharModal" aria-label="Fechar">Resgatar Prêmio</button>
         </div>
     </div>
+
+    <!-- Biblioteca de geração de QR Code, 100% local (sem CDN externo) —
+         gera o QR direto no navegador, funciona mesmo com internet instável,
+         já que só depende do JS carregado junto com a própria página. -->
+    <script src="qrcode.min.js"></script>
 
     <script>
         // ==========================================================
@@ -243,7 +334,16 @@
         // Sem isso, qualquer pessoa com a URL do /exec poderia mandar
         // requisições falsas e sujar seus dados de inventário.
         // ==========================================================
-        const API_TOKEN = "TROQUE_ESTE_TOKEN";
+        const API_TOKEN = "VoIovGbGcHdzstW9MEPSG9fBBqBZ0ZBouahLqfi7Lw4W3VdoVYHvcUG7Jvk6zhls";
+
+        // ==========================================================
+        // GOOGLE FORM — link do formulário que a pessoa preenche no
+        // próprio celular ao escanear o QR Code (aparece só quando o
+        // Seguro Residencial é sorteado). Crie um Google Form com
+        // campos "Nome" e "Telefone" e cole o link de compartilhamento
+        // aqui embaixo.
+        // ==========================================================
+        const FORMULARIO_SEGURO_URL = "https://forms.gle/SEU_FORMULARIO_AQUI";
 
         const canvas = document.getElementById("wheelCanvas");
         const ctx = canvas.getContext("2d");
@@ -340,7 +440,7 @@
         // Requer um doGet() no Apps Script (veja instruções abaixo).
         // ==========================================================
         function sincronizarEstadoComSheets() {
-            if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('https://script.google.com/macros/s/AKfycby0uqtW5gOh88K6_izV4xbh_or87FXIbeysz-ptqprPIWQlSiapXL_Q2BgAIu1CryYf8g/exec')) return;
+            if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('SEU_ID_AQUI')) return;
 
             fetch(SHEETS_ENDPOINT + '?t=' + Date.now() + '&token=' + encodeURIComponent(API_TOKEN))
                 .then(response => response.json())
@@ -583,27 +683,124 @@
                     document.getElementById("spinBtn").disabled = false;
 
                     const premioGanho = items[winningIndex];
-                    showModal(premioGanho.text);
                     registrarPremio({ id: premioGanho.id, nome: premioGanho.text });
+                    showModal(premioGanho);
                 }
             }
             requestAnimationFrame(animate);
         }
 
-        function showModal(prize) {
-            document.getElementById("winnerText").innerText = `Você ganhou: ${prize}`;
+        function showModal(premio) {
+            const ehAirfryer = premio.id === 'airfryer';
+            const ehSeguro = premio.id === 'seguro';
+
             const modal = document.getElementById("resultModal");
+            const modalContent = document.getElementById("modalContent");
+            const titulo = document.getElementById("modalTitulo");
+            const qrBlock = document.getElementById("qrBlock");
+            const btnFechar = document.getElementById("btnFecharModal");
+
+            document.getElementById("winnerText").innerText = `Você ganhou: ${premio.text}`;
+
+            // Anúncio pra leitor de tela — região temporária, criada e
+            // removida em seguida (ver função abaixo pra entender o motivo)
+            anunciarParaLeitorDeTela(`Parabéns! Você ganhou: ${premio.text}`);
+
+            // Airfryer é o prêmio mais raro (só sai uma vez) — comemoração maior
+            if (ehAirfryer) {
+                titulo.textContent = "PRÊMIO RARÍSSIMO! 🎉🔥";
+                modalContent.classList.add("especial");
+            } else {
+                titulo.textContent = "Parabéns! 🎉";
+                modalContent.classList.remove("especial");
+            }
+
+            // Seguro Residencial: mostra QR Code pro Google Form (a pessoa
+            // preenche no próprio celular — nada de digitar no tablet
+            // compartilhado, então a fila não trava).
+            if (ehSeguro) {
+                qrBlock.classList.add("visivel");
+                document.getElementById("qrCopiarStatus").textContent = "";
+                gerarQRSeguro();
+                btnFechar.textContent = "Fechar";
+            } else {
+                qrBlock.classList.remove("visivel");
+                btnFechar.textContent = "Resgatar Prêmio";
+            }
+
             modal.classList.add("active");
             modal.setAttribute("aria-hidden", "false");
 
-            dispararConfete();
-            tocarSomVitoria();
+            dispararConfete(ehAirfryer);
+            tocarSomVitoria(ehAirfryer);
+        }
+
+        // Gera o QR Code do formulário do Seguro Residencial direto no
+        // navegador (biblioteca local, sem depender de internet além da
+        // que o próprio celular do vencedor já tem pra abrir o link).
+        function gerarQRSeguro() {
+            const container = document.getElementById("qrCodigo");
+            container.innerHTML = "";
+
+            if (!FORMULARIO_SEGURO_URL || FORMULARIO_SEGURO_URL.includes('SEU_FORMULARIO_AQUI')) {
+                container.innerHTML = '<p style="color:#101010;font-size:12px;padding:10px;max-width:170px;">Configure a URL do Google Form em FORMULARIO_SEGURO_URL.</p>';
+                return;
+            }
+
+            try {
+                const qr = qrcode(0, 'M'); // typeNumber 0 = auto-detecta o tamanho necessário
+                qr.addData(FORMULARIO_SEGURO_URL);
+                qr.make();
+                container.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
+            } catch (erro) {
+                console.warn('Não foi possível gerar o QR Code:', erro);
+                container.innerHTML = '<p style="color:#101010;font-size:12px;padding:10px;">Erro ao gerar QR Code.</p>';
+            }
+        }
+
+        function copiarLinkFormulario() {
+            const status = document.getElementById("qrCopiarStatus");
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(FORMULARIO_SEGURO_URL)
+                    .then(() => { status.textContent = "Link copiado!"; })
+                    .catch(() => { status.textContent = FORMULARIO_SEGURO_URL; });
+            } else {
+                status.textContent = FORMULARIO_SEGURO_URL;
+            }
         }
 
         function closeModal() {
             const modal = document.getElementById("resultModal");
             modal.classList.remove("active");
             modal.setAttribute("aria-hidden", "true");
+        }
+
+        // Cria uma região aria-live temporária, anuncia o texto e remove
+        // a região do DOM logo em seguida. Diferente de manter uma região
+        // fixa o tempo todo: algumas extensões de leitura/acessibilidade
+        // desenham um destaque visual na região "viva" mais próxima e não
+        // soltam esse destaque até a região sumir — mantê-la permanente
+        // (mesmo invisível) fazia esse destaque ficar grudado na tela
+        // bem depois do anúncio, como um contorno ao redor da página.
+        function anunciarParaLeitorDeTela(texto) {
+            const regiao = document.createElement('div');
+            regiao.setAttribute('role', 'status');
+            regiao.setAttribute('aria-live', 'assertive');
+            regiao.className = 'sr-only';
+            document.body.appendChild(regiao);
+
+            // pequeno atraso garante que o leitor de tela já "viu" a região
+            // vazia antes do texto mudar, o que é mais confiável pra disparar o anúncio
+            setTimeout(() => {
+                regiao.textContent = texto;
+            }, 50);
+
+            // tempo suficiente pra qualquer leitor de tela terminar de falar,
+            // mas sem deixar a região pendurada no DOM indefinidamente
+            setTimeout(() => {
+                regiao.remove();
+            }, 4000);
         }
 
         // ==========================================================
@@ -619,7 +816,7 @@
         let confeteCanvas = null;
         let confeteCtx = null;
 
-        function dispararConfete() {
+        function dispararConfete(especial) {
             if (prefereReducedMotion()) return;
 
             if (!confeteCanvas) {
@@ -638,17 +835,19 @@
             confeteCanvas.width = window.innerWidth;
             confeteCanvas.height = window.innerHeight;
 
-            const coresConfete = ['#0072bb', '#075485', '#4fb3e8', '#F4F6F9'];
+            const coresConfete = especial
+                ? ['#f59e0b', '#fbbf24', '#F4F6F9', '#0072bb']
+                : ['#0072bb', '#075485', '#4fb3e8', '#F4F6F9'];
             const particulas = [];
-            const totalParticulas = 90;
+            const totalParticulas = especial ? 220 : 90;
 
             for (let i = 0; i < totalParticulas; i++) {
                 particulas.push({
                     x: confeteCanvas.width / 2,
                     y: confeteCanvas.height / 2 - 100,
-                    vx: (Math.random() - 0.5) * 12,
-                    vy: (Math.random() - 1.6) * 12,
-                    tamanho: 4 + Math.random() * 5,
+                    vx: (Math.random() - 0.5) * (especial ? 16 : 12),
+                    vy: (Math.random() - 1.6) * (especial ? 15 : 12),
+                    tamanho: (especial ? 5 : 4) + Math.random() * 5,
                     cor: coresConfete[Math.floor(Math.random() * coresConfete.length)],
                     rotacao: Math.random() * 360,
                     velRotacao: (Math.random() - 0.5) * 12,
@@ -656,7 +855,7 @@
                 });
             }
 
-            const duracaoMs = 2600;
+            const duracaoMs = especial ? 4200 : 2600;
             const inicio = performance.now();
 
             function animarConfete(agora) {
@@ -688,7 +887,7 @@
             requestAnimationFrame(animarConfete);
         }
 
-        function tocarSomVitoria() {
+        function tocarSomVitoria(especial) {
             try {
                 const AudioContextRef = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContextRef) return;
@@ -697,17 +896,21 @@
                     ctxAudio.resume();
                 }
 
-                // Pequeno arpejo ascendente (dó-mi-sol) como "chime" de vitória
-                const notas = [523.25, 659.25, 783.99];
+                // Arpejo padrão (dó-mi-sol). No modo especial (Airfryer),
+                // acrescenta mais duas notas formando uma pequena fanfarra.
+                const notas = especial
+                    ? [523.25, 659.25, 783.99, 1046.50, 1318.51]
+                    : [523.25, 659.25, 783.99];
+
                 notas.forEach((freq, i) => {
                     const osc = ctxAudio.createOscillator();
                     const ganho = ctxAudio.createGain();
                     osc.type = 'sine';
                     osc.frequency.value = freq;
 
-                    const inicioNota = ctxAudio.currentTime + i * 0.12;
+                    const inicioNota = ctxAudio.currentTime + i * (especial ? 0.1 : 0.12);
                     ganho.gain.setValueAtTime(0, inicioNota);
-                    ganho.gain.linearRampToValueAtTime(0.2, inicioNota + 0.02);
+                    ganho.gain.linearRampToValueAtTime(especial ? 0.25 : 0.2, inicioNota + 0.02);
                     ganho.gain.exponentialRampToValueAtTime(0.001, inicioNota + 0.5);
 
                     osc.connect(ganho);
