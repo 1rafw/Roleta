@@ -1,0 +1,730 @@
+// ==========================================================
+// CONFIGURAÇÃO — troque pela URL do seu Apps Script (/exec)
+// ==========================================================
+const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycby0uqtW5gOh88K6_izV4xbh_or87FXIbeysz-ptqprPIWQlSiapXL_Q2BgAIu1CryYf8g/exec";
+
+// ==========================================================
+// TOKEN DE SEGURANÇA — precisa ser IDÊNTICO ao TOKEN_SECRETO
+// definido no Apps Script (Código.gs) e ao API_TOKEN do admin.html.
+// Sem isso, qualquer pessoa com a URL do /exec poderia mandar
+// requisições falsas e sujar seus dados de inventário.
+// ==========================================================
+const API_TOKEN = "VoIovGbGcHdzstW9MEPSG9fBBqBZ0ZBouahLqfi7Lw4W3VdoVYHvcUG7Jvk6zhls";
+
+// ==========================================================
+// GOOGLE FORM — link do formulário que a pessoa preenche no
+// próprio celular ao escanear o QR Code (aparece só quando o
+// Seguro Residencial é sorteado). Crie um Google Form com
+// campos "Nome" e "Telefone" e cole o link de compartilhamento
+// aqui embaixo.
+// ==========================================================
+const FORMULARIO_SEGURO_URL = "https://forms.gle/SEU_FORMULARIO_AQUI";
+
+const canvas = document.getElementById("wheelCanvas");
+const ctx = canvas.getContext("2d");
+
+const items = [
+    // Sonho de Valsa reduzido de 64.5 para 61.0 para compensar o aumento do Seguro
+    { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#0072bb", color2: "#075485" },
+    { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#075485", color2: "#043a5c" },
+    // Seguro Residencial aumentado de 1.5 para 5.0
+    { id: 'seguro', text: "Seguro Resid.", weight: 5.0, color1: "#2f9ade", color2: "#0072bb", esgotado: false },
+    { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#4fb3e8", color2: "#0072bb" },
+    { id: 'airfryer', text: "Airfryer", weight: 0.0, color1: "#101010", color2: "#000000", esgotado: false },
+    { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#0a6aa8", color2: "#075485" }
+];
+
+let contadorSeguro = 0;
+const LIMITE_SEGURO = 10;
+
+let cliquesLogo = 0;
+let timerCliques = null;
+let airfryerAtiva = false;
+
+// ==========================================================
+// PERSISTÊNCIA DE ESTADO DA ROLETA (esgotados, contador, easter egg)
+// Garante que, se o navegador/tablet for reiniciado no meio do
+// evento, os prêmios já esgotados continuem esgotados.
+// ==========================================================
+const STORAGE_KEY_ESTADO = 'estado_roleta_cf';
+
+function salvarEstadoRoleta() {
+    const estado = {
+        pesos: items.map(i => ({ id: i.id, weight: i.weight, esgotado: !!i.esgotado })),
+        contadorSeguro,
+        airfryerAtiva
+    };
+    localStorage.setItem(STORAGE_KEY_ESTADO, JSON.stringify(estado));
+}
+
+function carregarEstadoRoleta() {
+    try {
+        const salvo = JSON.parse(localStorage.getItem(STORAGE_KEY_ESTADO) || 'null');
+        if (!salvo) return;
+
+        salvo.pesos.forEach(p => {
+            const item = items.find(i => i.id === p.id);
+            if (item) {
+                item.weight = p.weight;
+                item.esgotado = !!p.esgotado;
+            }
+        });
+
+        contadorSeguro = salvo.contadorSeguro || 0;
+        airfryerAtiva = !!salvo.airfryerAtiva;
+
+        if (airfryerAtiva) {
+            logoTrigger.style.borderColor = "#f59e0b";
+        }
+    } catch (e) {
+        console.warn('Não foi possível restaurar o estado da roleta:', e);
+    }
+}
+
+// Zera o peso do Seguro Residencial, transfere para o Sonho de Valsa
+// e marca como esgotado (efeito visual cinza). Idempotente: chamar
+// de novo não tem efeito colateral se já estiver esgotado.
+function aplicarEsgotamentoSeguro() {
+    const itemSeguro = items.find(i => i.id === 'seguro');
+    const itemSonho = items.find(i => i.id === 'sonho_valsa');
+    if (itemSeguro.esgotado) return;
+
+    itemSonho.weight += itemSeguro.weight;
+    itemSeguro.weight = 0;
+    itemSeguro.esgotado = true;
+}
+
+// Mesma lógica para a Airfryer: zera peso, devolve pro Sonho de
+// Valsa, marca esgotada e trava o easter egg (não reativa mais).
+function aplicarEsgotamentoAirfryer() {
+    const itemAirfryer = items.find(i => i.id === 'airfryer');
+    const itemSonho = items.find(i => i.id === 'sonho_valsa');
+    if (!itemAirfryer.esgotado) {
+        itemSonho.weight += itemAirfryer.weight;
+        itemAirfryer.weight = 0;
+        itemAirfryer.esgotado = true;
+    }
+    airfryerAtiva = true;
+}
+
+// ==========================================================
+// SINCRONIZAÇÃO COM O GOOGLE SHEETS (camada extra de segurança)
+// Consulta a planilha (fonte da verdade) via doGet e reconcilia
+// com o estado local — útil se o tablet trocar de navegador,
+// limpar dados, ou for substituído por outro no meio do evento.
+// Requer um doGet() no Apps Script (veja instruções abaixo).
+// ==========================================================
+function sincronizarEstadoComSheets() {
+    if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('SEU_ID_AQUI')) return;
+
+    fetch(SHEETS_ENDPOINT + '?t=' + Date.now() + '&token=' + encodeURIComponent(API_TOKEN))
+        .then(response => response.json())
+        .then(data => {
+            let mudou = false;
+
+            if (typeof data.contadorSeguro === 'number' && data.contadorSeguro > contadorSeguro) {
+                contadorSeguro = data.contadorSeguro;
+                mudou = true;
+            }
+            if (contadorSeguro >= LIMITE_SEGURO && !items.find(i => i.id === 'seguro').esgotado) {
+                aplicarEsgotamentoSeguro();
+                mudou = true;
+            }
+            if (data.airfryerGanha && !items.find(i => i.id === 'airfryer').esgotado) {
+                aplicarEsgotamentoAirfryer();
+                mudou = true;
+            }
+
+            if (mudou) {
+                salvarEstadoRoleta();
+                drawWheel(currentAngle);
+                console.log('Estado sincronizado com a planilha.');
+            }
+        })
+        .catch(error => {
+            console.warn('Não foi possível sincronizar estado com a planilha:', error);
+        });
+}
+
+const logoTrigger = document.getElementById('logo-trigger');
+
+function acionarLogo() {
+    if (airfryerAtiva) return;
+
+    cliquesLogo++;
+
+    if (cliquesLogo === 1) {
+        timerCliques = setTimeout(() => {
+            cliquesLogo = 0;
+        }, 2000);
+    }
+
+    if (cliquesLogo >= 5) {
+        clearTimeout(timerCliques);
+        airfryerAtiva = true;
+
+        let itemAirfryer = items.find(i => i.id === 'airfryer');
+        let itemSonho = items.find(i => i.id === 'sonho_valsa');
+
+        itemAirfryer.weight = 0.15;
+        itemSonho.weight -= 0.15;
+
+        logoTrigger.style.borderColor = "#f59e0b";
+        console.log("EASTER EGG ATIVADO!");
+        salvarEstadoRoleta();
+    }
+}
+
+logoTrigger.addEventListener('click', acionarLogo);
+// Suporte a teclado, já que o elemento agora é focável (tabindex)
+logoTrigger.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        acionarLogo();
+    }
+});
+
+let currentAngle = 0;
+const totalSlices = items.length;
+const sliceAngle = (2 * Math.PI) / totalSlices;
+let isSpinning = false;
+
+function drawWheel(rotation = 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = canvas.width / 2;
+
+    // Fator de escala relativo ao design original (canvas de 420px,
+    // raio 210px) — assim fontes, traços e espaçamentos continuam
+    // proporcionais mesmo com o canvas rodando em resolução maior.
+    const escala = radius / 210;
+
+    for (let i = 0; i < totalSlices; i++) {
+        const startAngle = rotation + i * sliceAngle;
+        const endAngle = startAngle + sliceAngle;
+
+        const estaEsgotado = !!items[i].esgotado;
+
+        const sliceGradient = ctx.createRadialGradient(centerX, centerY, 40 * escala, centerX, centerY, radius);
+        if (estaEsgotado) {
+            sliceGradient.addColorStop(0, "#4b5563");
+            sliceGradient.addColorStop(1, "#1f2937");
+        } else {
+            sliceGradient.addColorStop(0, items[i].color1);
+            sliceGradient.addColorStop(1, items[i].color2);
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.fillStyle = sliceGradient;
+        ctx.fill();
+
+        if (estaEsgotado) {
+            // leve efeito "hachurado" pra reforçar visualmente que saiu de jogo
+            ctx.save();
+            ctx.clip();
+            ctx.strokeStyle = "rgba(0,0,0,0.35)";
+            ctx.lineWidth = 3 * escala;
+            for (let d = -radius; d < radius * 2; d += 14 * escala) {
+                ctx.beginPath();
+                ctx.moveTo(centerX + d, centerY - radius);
+                ctx.lineTo(centerX + d - radius, centerY + radius);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        
+        ctx.lineWidth = 6 * escala;
+        ctx.strokeStyle = "#101010";
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        
+        const midAngle = startAngle + sliceAngle / 2;
+        ctx.rotate(midAngle);
+
+        ctx.fillStyle = estaEsgotado ? "#9ca3af" : "#F4F6F9";
+        ctx.font = `bold ${Math.round(15 * escala)}px 'Segoe UI', Tahoma, sans-serif`;
+        ctx.shadowColor = "rgba(0, 0, 0, 0.95)"; 
+        ctx.shadowBlur = 6 * escala;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        const maxTextWidth = 110 * escala; 
+        const lineHeight = 17 * escala;
+        const inset = 15 * escala;
+        const normalizedAngle = (midAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+        const isLeftHalf = normalizedAngle > Math.PI / 2 && normalizedAngle < (3 * Math.PI) / 2;
+
+        const textoExibido = estaEsgotado ? "ESGOTADO" : items[i].text;
+        const linhas = quebrarTextoEmLinhas(ctx, textoExibido, maxTextWidth);
+        const offsetInicial = -((linhas.length - 1) * lineHeight) / 2;
+
+        if (isLeftHalf) {
+            ctx.rotate(Math.PI);
+            ctx.textAlign = "left";
+            linhas.forEach((linha, idx) => {
+                ctx.fillText(linha, -(radius - inset), offsetInicial + idx * lineHeight, maxTextWidth);
+            });
+        } else {
+            ctx.textAlign = "right";
+            linhas.forEach((linha, idx) => {
+                ctx.fillText(linha, radius - inset, offsetInicial + idx * lineHeight, maxTextWidth);
+            });
+        }
+
+        ctx.restore();
+    }
+}
+
+// Quebra o texto do prêmio em várias linhas para caber bem
+// dentro da fatia da roleta, em vez de espremer tudo numa linha só.
+function quebrarTextoEmLinhas(ctx, texto, larguraMaxima) {
+    const palavras = texto.split(' ');
+    const linhas = [];
+    let linhaAtual = palavras[0] || '';
+
+    for (let i = 1; i < palavras.length; i++) {
+        const linhaTeste = linhaAtual + ' ' + palavras[i];
+        if (ctx.measureText(linhaTeste).width > larguraMaxima && linhaAtual !== '') {
+            linhas.push(linhaAtual);
+            linhaAtual = palavras[i];
+        } else {
+            linhaAtual = linhaTeste;
+        }
+    }
+    linhas.push(linhaAtual);
+    return linhas;
+}
+
+function spinWheel() {
+    if (isSpinning) return;
+    isSpinning = true;
+    document.getElementById("spinBtn").disabled = true;
+
+    const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
+    let randomNum = Math.random() * totalWeight;
+    let winningIndex = 0;
+
+    for (let i = 0; i < items.length; i++) {
+        randomNum -= items[i].weight;
+        if (randomNum <= 0) {
+            winningIndex = i;
+            break;
+        }
+    }
+
+    if (items[winningIndex].id === 'seguro') {
+        contadorSeguro++;
+        if (contadorSeguro >= LIMITE_SEGURO) {
+            aplicarEsgotamentoSeguro();
+        }
+        salvarEstadoRoleta();
+    }
+
+    if (items[winningIndex].id === 'airfryer') {
+        aplicarEsgotamentoAirfryer();
+        salvarEstadoRoleta();
+    }
+
+    const sliceCenterAngle = winningIndex * sliceAngle + sliceAngle / 2;
+    const extraSpins = 7 * 2 * Math.PI; 
+    
+    const normalizedCurrentAngle = currentAngle % (2 * Math.PI);
+    const targetBaseRotation = (2 * Math.PI) - sliceCenterAngle;
+    
+    let rotationNeeded = targetBaseRotation - normalizedCurrentAngle;
+    if (rotationNeeded < 0) {
+        rotationNeeded += (2 * Math.PI);
+    }
+    
+    const totalDistance = extraSpins + rotationNeeded;
+    const startAngle = currentAngle; 
+
+    const duration = 4500; 
+    let start = null;
+
+    function animate(timestamp) {
+        if (!start) start = timestamp;
+        const elapsed = timestamp - start;
+        
+        let progress = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 4);
+        
+        currentAngle = startAngle + totalDistance * easeOut;
+        drawWheel(currentAngle);
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            isSpinning = false;
+            document.getElementById("spinBtn").disabled = false;
+
+            const premioGanho = items[winningIndex];
+            registrarPremio({ id: premioGanho.id, nome: premioGanho.text });
+            showModal(premioGanho);
+        }
+    }
+    requestAnimationFrame(animate);
+}
+
+function showModal(premio) {
+    const ehAirfryer = premio.id === 'airfryer';
+    const ehSeguro = premio.id === 'seguro';
+
+    const modal = document.getElementById("resultModal");
+    const modalContent = document.getElementById("modalContent");
+    const titulo = document.getElementById("modalTitulo");
+    const qrBlock = document.getElementById("qrBlock");
+    const btnFechar = document.getElementById("btnFecharModal");
+
+    document.getElementById("winnerText").innerText = `Você ganhou: ${premio.text}`;
+
+    // Anúncio pra leitor de tela — região temporária, criada e
+    // removida em seguida (ver função abaixo pra entender o motivo)
+    anunciarParaLeitorDeTela(`Parabéns! Você ganhou: ${premio.text}`);
+
+    // Airfryer é o prêmio mais raro (só sai uma vez) — comemoração maior
+    if (ehAirfryer) {
+        titulo.textContent = "PRÊMIO RARÍSSIMO! 🎉🔥";
+        modalContent.classList.add("especial");
+    } else {
+        titulo.textContent = "Parabéns! 🎉";
+        modalContent.classList.remove("especial");
+    }
+
+    // Seguro Residencial: mostra QR Code pro Google Form (a pessoa
+    // preenche no próprio celular — nada de digitar no tablet
+    // compartilhado, então a fila não trava).
+    if (ehSeguro) {
+        qrBlock.classList.add("visivel");
+        document.getElementById("qrCopiarStatus").textContent = "";
+        gerarQRSeguro();
+        btnFechar.textContent = "Fechar";
+    } else {
+        qrBlock.classList.remove("visivel");
+        btnFechar.textContent = "Resgatar Prêmio";
+    }
+
+    modal.classList.add("active");
+    modal.setAttribute("aria-hidden", "false");
+
+    dispararConfete(ehAirfryer);
+    tocarSomVitoria(ehAirfryer);
+}
+
+// Gera o QR Code do formulário do Seguro Residencial direto no
+// navegador (biblioteca local, sem depender de internet além da
+// que o próprio celular do vencedor já tem pra abrir o link).
+function gerarQRSeguro() {
+    const container = document.getElementById("qrCodigo");
+    container.innerHTML = "";
+
+    if (!FORMULARIO_SEGURO_URL || FORMULARIO_SEGURO_URL.includes('SEU_FORMULARIO_AQUI')) {
+        container.innerHTML = '<p style="color:#101010;font-size:12px;padding:10px;max-width:170px;">Configure a URL do Google Form em FORMULARIO_SEGURO_URL.</p>';
+        return;
+    }
+
+    try {
+        const qr = qrcode(0, 'M'); // typeNumber 0 = auto-detecta o tamanho necessário
+        qr.addData(FORMULARIO_SEGURO_URL);
+        qr.make();
+        container.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
+    } catch (erro) {
+        console.warn('Não foi possível gerar o QR Code:', erro);
+        container.innerHTML = '<p style="color:#101010;font-size:12px;padding:10px;">Erro ao gerar QR Code.</p>';
+    }
+}
+
+function copiarLinkFormulario() {
+    const status = document.getElementById("qrCopiarStatus");
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(FORMULARIO_SEGURO_URL)
+            .then(() => { status.textContent = "Link copiado!"; })
+            .catch(() => { status.textContent = FORMULARIO_SEGURO_URL; });
+    } else {
+        status.textContent = FORMULARIO_SEGURO_URL;
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById("resultModal");
+    modal.classList.remove("active");
+    modal.setAttribute("aria-hidden", "true");
+}
+
+// Cria uma região aria-live temporária, anuncia o texto e remove
+// a região do DOM logo em seguida. Diferente de manter uma região
+// fixa o tempo todo: algumas extensões de leitura/acessibilidade
+// desenham um destaque visual na região "viva" mais próxima e não
+// soltam esse destaque até a região sumir — mantê-la permanente
+// (mesmo invisível) fazia esse destaque ficar grudado na tela
+// bem depois do anúncio, como um contorno ao redor da página.
+function anunciarParaLeitorDeTela(texto) {
+    const regiao = document.createElement('div');
+    regiao.setAttribute('role', 'status');
+    regiao.setAttribute('aria-live', 'assertive');
+    regiao.className = 'sr-only';
+    document.body.appendChild(regiao);
+
+    // pequeno atraso garante que o leitor de tela já "viu" a região
+    // vazia antes do texto mudar, o que é mais confiável pra disparar o anúncio
+    setTimeout(() => {
+        regiao.textContent = texto;
+    }, 50);
+
+    // tempo suficiente pra qualquer leitor de tela terminar de falar,
+    // mas sem deixar a região pendurada no DOM indefinidamente
+    setTimeout(() => {
+        regiao.remove();
+    }, 4000);
+}
+
+// ==========================================================
+// EFEITOS DE VITÓRIA — confete (canvas próprio, sem dependência
+// externa) e som (gerado via Web Audio API, sem precisar de
+// arquivo de áudio). Respeita "prefers-reduced-motion" para
+// quem configurou o sistema pra reduzir animações.
+// ==========================================================
+function prefereReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+let confeteCanvas = null;
+let confeteCtx = null;
+
+function dispararConfete(especial) {
+    if (prefereReducedMotion()) return;
+
+    if (!confeteCanvas) {
+        confeteCanvas = document.createElement('canvas');
+        confeteCanvas.style.position = 'fixed';
+        confeteCanvas.style.top = '0';
+        confeteCanvas.style.left = '0';
+        confeteCanvas.style.width = '100%';
+        confeteCanvas.style.height = '100%';
+        confeteCanvas.style.pointerEvents = 'none';
+        confeteCanvas.style.zIndex = '200';
+        confeteCanvas.style.border = 'none';
+        confeteCanvas.style.borderRadius = '0';
+        confeteCanvas.style.background = 'transparent';
+        document.body.appendChild(confeteCanvas);
+        confeteCtx = confeteCanvas.getContext('2d');
+    }
+
+    confeteCanvas.width = window.innerWidth;
+    confeteCanvas.height = window.innerHeight;
+
+    const coresConfete = especial
+        ? ['#f59e0b', '#fbbf24', '#F4F6F9', '#0072bb']
+        : ['#0072bb', '#075485', '#4fb3e8', '#F4F6F9'];
+    const particulas = [];
+    const totalParticulas = especial ? 220 : 90;
+
+    for (let i = 0; i < totalParticulas; i++) {
+        particulas.push({
+            x: confeteCanvas.width / 2,
+            y: confeteCanvas.height / 2 - 100,
+            vx: (Math.random() - 0.5) * (especial ? 16 : 12),
+            vy: (Math.random() - 1.6) * (especial ? 15 : 12),
+            tamanho: (especial ? 5 : 4) + Math.random() * 5,
+            cor: coresConfete[Math.floor(Math.random() * coresConfete.length)],
+            rotacao: Math.random() * 360,
+            velRotacao: (Math.random() - 0.5) * 12,
+            vida: 0
+        });
+    }
+
+    const duracaoMs = especial ? 4200 : 2600;
+    const inicio = performance.now();
+
+    function animarConfete(agora) {
+        const decorrido = agora - inicio;
+        confeteCtx.clearRect(0, 0, confeteCanvas.width, confeteCanvas.height);
+
+        particulas.forEach(p => {
+            p.vy += 0.25; // gravidade
+            p.x += p.vx;
+            p.y += p.vy;
+            p.rotacao += p.velRotacao;
+
+            confeteCtx.save();
+            confeteCtx.translate(p.x, p.y);
+            confeteCtx.rotate((p.rotacao * Math.PI) / 180);
+            confeteCtx.fillStyle = p.cor;
+            confeteCtx.globalAlpha = Math.max(0, 1 - decorrido / duracaoMs);
+            confeteCtx.fillRect(-p.tamanho / 2, -p.tamanho / 2, p.tamanho, p.tamanho * 0.6);
+            confeteCtx.restore();
+        });
+
+        if (decorrido < duracaoMs) {
+            requestAnimationFrame(animarConfete);
+        } else {
+            confeteCtx.clearRect(0, 0, confeteCanvas.width, confeteCanvas.height);
+        }
+    }
+
+    requestAnimationFrame(animarConfete);
+}
+
+function tocarSomVitoria(especial) {
+    try {
+        const AudioContextRef = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextRef) return;
+        const ctxAudio = new AudioContextRef();
+        if (ctxAudio.state === 'suspended') {
+            ctxAudio.resume();
+        }
+
+        // Arpejo padrão (dó-mi-sol). No modo especial (Airfryer),
+        // acrescenta mais duas notas formando uma pequena fanfarra.
+        const notas = especial
+            ? [523.25, 659.25, 783.99, 1046.50, 1318.51]
+            : [523.25, 659.25, 783.99];
+
+        notas.forEach((freq, i) => {
+            const osc = ctxAudio.createOscillator();
+            const ganho = ctxAudio.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+
+            const inicioNota = ctxAudio.currentTime + i * (especial ? 0.1 : 0.12);
+            ganho.gain.setValueAtTime(0, inicioNota);
+            ganho.gain.linearRampToValueAtTime(especial ? 0.25 : 0.2, inicioNota + 0.02);
+            ganho.gain.exponentialRampToValueAtTime(0.001, inicioNota + 0.5);
+
+            osc.connect(ganho);
+            ganho.connect(ctxAudio.destination);
+            osc.start(inicioNota);
+            osc.stop(inicioNota + 0.5);
+        });
+    } catch (erro) {
+        console.warn('Não foi possível tocar o som de vitória:', erro);
+    }
+}
+
+// ==========================================================
+// REGISTRO DE PRÊMIOS — Google Sheets + fallback localStorage
+// ==========================================================
+const STORAGE_KEY = 'historico_premios_cf';
+
+function getHistorico() {
+    try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+function salvarHistorico(historico) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(historico));
+}
+
+function atualizarStatusBar() {
+    const historico = getHistorico();
+    const pendentes = historico.filter(h => !h.sincronizado).length;
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+
+    if (pendentes === 0) {
+        dot.className = 'status-dot';
+        text.textContent = 'Sincronizado';
+    } else {
+        dot.className = 'status-dot pending';
+        text.textContent = `${pendentes} pendente(s)`;
+    }
+}
+
+// Registra um prêmio: salva local sempre, depois tenta enviar pro Sheets
+function registrarPremio(premio) {
+    const historico = getHistorico();
+    const registro = {
+        ...premio,
+        giroId: gerarIdGiro(),
+        timestamp: new Date().toISOString(),
+        sincronizado: false
+    };
+    historico.push(registro);
+    salvarHistorico(historico);
+    atualizarStatusBar();
+
+    enviarParaSheets(registro, historico.length - 1);
+}
+
+// Gera um ID único por giro. Isso é o que permite ao Apps Script
+// detectar reenvios (ex: fetch que "parece" ter falhado por timeout
+// mas na verdade já tinha chegado) e não duplicar a linha na planilha.
+function gerarIdGiro() {
+    if (window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+    }
+    // fallback para navegadores mais antigos sem crypto.randomUUID
+    return 'giro-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+function enviarParaSheets(registro, indice) {
+    fetch(SHEETS_ENDPOINT, {
+        method: 'POST',
+        // text/plain evita o preflight OPTIONS, que o Apps Script
+        // não trata bem e causaria erro de CORS.
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ id: registro.id, nome: registro.nome, giroId: registro.giroId, token: API_TOKEN })
+    })
+    .then(response => response.json())
+    .then(() => {
+        const historico = getHistorico();
+        if (historico[indice]) {
+            historico[indice].sincronizado = true;
+            salvarHistorico(historico);
+        }
+        atualizarStatusBar();
+        console.log('Registrado na planilha:', registro.nome);
+    })
+    .catch(error => {
+        console.warn('Sem conexão — item salvo localmente, será reenviado:', error);
+        atualizarStatusBar();
+    });
+}
+
+// Tenta reenviar tudo que ainda não foi sincronizado
+// (roda ao carregar a página e sempre que a conexão voltar)
+function tentarResincronizar() {
+    const historico = getHistorico();
+    historico.forEach((registro, indice) => {
+        if (!registro.sincronizado) {
+            enviarParaSheets(registro, indice);
+        }
+    });
+}
+
+window.addEventListener('online', () => {
+    document.getElementById('statusDot').classList.remove('offline');
+    tentarResincronizar();
+    sincronizarEstadoComSheets();
+});
+
+window.addEventListener('offline', () => {
+    document.getElementById('statusDot').classList.add('offline');
+    document.getElementById('statusText').textContent = 'Sem internet';
+});
+
+// Inicialização
+carregarEstadoRoleta();
+drawWheel();
+atualizarStatusBar();
+tentarResincronizar();
+sincronizarEstadoComSheets();
+
+// Registro do Service Worker (necessário para "Adicionar à tela
+// inicial" funcionar em modo standalone no Chrome/Android).
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((erro) => {
+            console.warn('Não foi possível registrar o service worker:', erro);
+        });
+    });
+}
