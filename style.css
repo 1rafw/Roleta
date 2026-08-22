@@ -76,8 +76,8 @@ body {
     position: relative;
     /* o limite por vh é o que impede o botão de ser empurrado pra fora
        da tela em telas baixas / paisagem */
-    width: min(64vmin, 44vh, 560px);
-    height: min(64vmin, 44vh, 560px);
+    width: min(80vmin, 54vh, 700px);
+    height: min(80vmin, 54vh, 700px);
     min-width: 260px;
     min-height: 260px;
     filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.5));
@@ -136,6 +136,8 @@ body {
     letter-spacing: 1.5px;
     touch-action: manipulation;
     flex-shrink: 0;
+    /* afasta o botão da borda inferior da tela */
+    margin-bottom: clamp(20px, 6vh, 80px);
 }
 .spin-btn:hover {
     background: linear-gradient(135deg, #075485 0%, #101010 100%);
