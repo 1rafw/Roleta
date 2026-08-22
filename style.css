@@ -7,24 +7,43 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* space-between distribui os blocos ao longo de toda a altura da tela:
+       cabeçalho no topo, roleta no meio, botão embaixo. Isso dá muito mais
+       respiro do que agrupar tudo no centro com um gap fixo. */
+    justify-content: space-between;
     min-height: 100vh;
     background: linear-gradient(135deg, #101010 0%, #075485 100%);
     color: #F4F6F9;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     overflow: hidden;
-    padding: 4vh 5vw;
-    gap: clamp(20px, 4vh, 56px);
+    padding: clamp(20px, 4vh, 48px) 5vw clamp(24px, 5vh, 60px);
+    gap: clamp(16px, 3vh, 40px);
+}
+.topo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(10px, 1.6vh, 20px);
+    flex-shrink: 0;
+}
+.logo-marca {
+    /* limitada pela ALTURA (não só largura): em telas em paisagem, uma
+       logo alta demais empurraria o botão pra fora da tela. */
+    height: clamp(52px, 9vh, 110px);
+    width: auto;
+    display: block;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
 }
 .header-title {
-    font-size: clamp(28px, 5vw, 48px);
+    font-size: clamp(24px, 4vw, 40px);
     font-weight: 700;
-    letter-spacing: 1.5px;
+    letter-spacing: 3px;
     color: #F4F6F9;
     text-transform: uppercase;
     text-align: center;
     width: 100%;
     text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    opacity: 0.92;
 }
 .status-bar {
     position: fixed;
@@ -55,8 +74,12 @@ body {
 }
 .wheel-container {
     position: relative;
-    width: clamp(300px, 62vmin, 620px);
-    height: clamp(300px, 62vmin, 620px);
+    /* o limite por vh é o que impede o botão de ser empurrado pra fora
+       da tela em telas baixas / paisagem */
+    width: min(64vmin, 44vh, 560px);
+    height: min(64vmin, 44vh, 560px);
+    min-width: 260px;
+    min-height: 260px;
     filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.5));
     flex-shrink: 0;
 }
@@ -76,7 +99,7 @@ body {
     height: 28%;
     background-color: #F4F6F9; 
     border-radius: 50%;
-    background-image: url('Logo azul.png');
+    background-image: url('logo-azul.png');
     background-size: 75%;
     background-position: center;
     background-repeat: no-repeat;
@@ -224,14 +247,15 @@ body {
     background: #F4F6F9;
     color: #101010;
     font-family: 'Courier New', Courier, monospace;
-    font-size: clamp(30px, 6vw, 46px);
+    font-size: clamp(24px, 4.6vw, 40px);
     font-weight: 700;
-    letter-spacing: 2px;
-    padding: 20px 24px;
+    letter-spacing: 1px;
+    padding: 18px 20px;
     border-radius: 14px;
     border: 3px solid #0072bb;
     display: inline-block;
     user-select: all;
+    white-space: nowrap; /* o código precisa ficar numa linha só na foto */
 }
 .voucher-data {
     font-size: clamp(13px, 1.8vw, 15px);
