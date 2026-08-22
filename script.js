@@ -15,12 +15,12 @@ const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
 
 const items = [
-    { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#0072bb", color2: "#075485" },
-    { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#075485", color2: "#043a5c" },
-    { id: 'seguro', text: "Seguro Resid.", weight: 4.0, color1: "#2f9ade", color2: "#0072bb", esgotado: false },
-    { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#4fb3e8", color2: "#0072bb" },
-    { id: 'airfryer', text: "Airfryer", weight: 0.5, color1: "#101010", color2: "#000000", esgotado: false },
-    { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#0a6aa8", color2: "#075485" }
+    { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#0072bb", color2: "#0072bb" },
+    { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#0072bb", color2: "#0072bb" },
+    { id: 'seguro', text: "Seguro Resid.", weight: 13.0, color1: "#0072bb", color2: "#0072bb", esgotado: false },
+    { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#0072bb", color2: "#0072bb" },
+    { id: 'airfryer', text: "Airfryer", weight: 0.5, color1: "#101010", color2: "#101010", esgotado: false },
+    { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#0072bb", color2: "#0072bb" }
 ];
 
 let contadorSeguro = 0;
@@ -148,15 +148,15 @@ function acionarLogo() {
         }, 2000);
     }
 
-    if (cliquesLogo >= 3) {
+    if (cliquesLogo >= 5) {
         clearTimeout(timerCliques);
         airfryerAtiva = true;
 
         let itemAirfryer = items.find(i => i.id === 'airfryer');
         let itemSonho = items.find(i => i.id === 'sonho_valsa');
 
-        itemAirfryer.weight = 15.0;
-        itemSonho.weight -= 20.0;
+        itemAirfryer.weight = 0.15;
+        itemSonho.weight -= 0.15;
 
         logoTrigger.style.borderColor = "#f59e0b";
         console.log("EASTER EGG ATIVADO!");
@@ -226,7 +226,7 @@ function drawWheel(rotation = 0) {
         }
         
         ctx.lineWidth = 6 * escala;
-        ctx.strokeStyle = "#101010";
+        ctx.strokeStyle = "#F4F6F9";
         ctx.stroke();
 
         ctx.save();
@@ -384,7 +384,7 @@ function showModal(premio) {
 
     // Airfryer é o prêmio mais raro (só sai uma vez) — comemoração maior
     if (ehAirfryer) {
-        titulo.textContent = "PARABÉNS, VOCÊ GANHOU A AIRFRYER! 🎉🔥";
+        titulo.textContent = "PRÊMIO RARÍSSIMO! 🎉🔥";
         modalContent.classList.add("especial");
     } else {
         titulo.textContent = "Parabéns! 🎉";
