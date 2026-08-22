@@ -1,7 +1,7 @@
 // ==========================================================
 // CONFIGURAÇÃO — troque pela URL do seu Apps Script (/exec)
 // ==========================================================
-const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycby0uqtW5gOh88K6_izV4xbh_or87FXIbeysz-ptqprPIWQlSiapXL_Q2BgAIu1CryYf8g/exec";
+const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyA-nNT8B0F2nTf13A3GNm_twwx4kDvWKY-GCku5amXcQZBaWD2fuPOCFcUYBQ_rBmc5A/exec";
 
 // ==========================================================
 // TOKEN DE SEGURANÇA — precisa ser IDÊNTICO ao TOKEN_SECRETO
@@ -9,16 +9,7 @@ const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycby0uqtW5gOh88K6
 // Sem isso, qualquer pessoa com a URL do /exec poderia mandar
 // requisições falsas e sujar seus dados de inventário.
 // ==========================================================
-const API_TOKEN = "VoIovGbGcHdzstW9MEPSG9fBBqBZ0ZBouahLqfi7Lw4W3VdoVYHvcUG7Jvk6zhls";
-
-// ==========================================================
-// GOOGLE FORM — link do formulário que a pessoa preenche no
-// próprio celular ao escanear o QR Code (aparece só quando o
-// Seguro Residencial é sorteado). Crie um Google Form com
-// campos "Nome" e "Telefone" e cole o link de compartilhamento
-// aqui embaixo.
-// ==========================================================
-const FORMULARIO_SEGURO_URL = "https://forms.gle/SEU_FORMULARIO_AQUI";
+const API_TOKEN = "TROQUE_ESTE_TOKEN";
 
 const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
@@ -364,8 +355,14 @@ function spinWheel() {
             document.getElementById("spinBtn").disabled = false;
 
             const premioGanho = items[winningIndex];
-            registrarPremio({ id: premioGanho.id, nome: premioGanho.text });
-            showModal(premioGanho);
+
+            // Prêmios de voucher (resgatados depois, fora do estande) ganham
+            // um código único que a pessoa fotografa. Esse mesmo código vai
+            // pra planilha, o que permite conferir depois quem ganhou o quê.
+            const voucher = premioGanho.id === 'seguro' ? gerarCodigoVoucher() : null;
+
+            registrarPremio({ id: premioGanho.id, nome: premioGanho.text, voucher });
+            showModal({ ...premioGanho, voucher });
         }
     }
     requestAnimationFrame(animate);
@@ -378,7 +375,7 @@ function showModal(premio) {
     const modal = document.getElementById("resultModal");
     const modalContent = document.getElementById("modalContent");
     const titulo = document.getElementById("modalTitulo");
-    const qrBlock = document.getElementById("qrBlock");
+    const voucherBlock = document.getElementById("voucherBlock");
     const btnFechar = document.getElementById("btnFecharModal");
 
     document.getElementById("winnerText").innerText = `Você ganhou: ${premio.text}`;
@@ -396,16 +393,17 @@ function showModal(premio) {
         modalContent.classList.remove("especial");
     }
 
-    // Seguro Residencial: mostra QR Code pro Google Form (a pessoa
-    // preenche no próprio celular — nada de digitar no tablet
-    // compartilhado, então a fila não trava).
+    // Seguro Residencial: exibe o código do voucher em fonte grande pra
+    // pessoa fotografar. O código já foi gerado e gravado junto com o
+    // registro do giro, então a conferência posterior é só buscar esse
+    // código na planilha (com data/hora e prêmio na mesma linha).
     if (ehSeguro) {
-        qrBlock.classList.add("visivel");
-        document.getElementById("qrCopiarStatus").textContent = "";
-        gerarQRSeguro();
+        voucherBlock.classList.add("visivel");
+        document.getElementById("voucherCodigo").textContent = premio.voucher || '—';
+        document.getElementById("voucherData").textContent = formatarDataHoraBR(new Date());
         btnFechar.textContent = "Fechar";
     } else {
-        qrBlock.classList.remove("visivel");
+        voucherBlock.classList.remove("visivel");
         btnFechar.textContent = "Resgatar Prêmio";
     }
 
@@ -416,39 +414,25 @@ function showModal(premio) {
     tocarSomVitoria(ehAirfryer);
 }
 
-// Gera o QR Code do formulário do Seguro Residencial direto no
-// navegador (biblioteca local, sem depender de internet além da
-// que o próprio celular do vencedor já tem pra abrir o link).
-function gerarQRSeguro() {
-    const container = document.getElementById("qrCodigo");
-    container.innerHTML = "";
-
-    if (!FORMULARIO_SEGURO_URL || FORMULARIO_SEGURO_URL.includes('SEU_FORMULARIO_AQUI')) {
-        container.innerHTML = '<p style="color:#101010;font-size:12px;padding:10px;max-width:170px;">Configure a URL do Google Form em FORMULARIO_SEGURO_URL.</p>';
-        return;
+// Gera um código de voucher curto, legível e difícil de adivinhar.
+// Evita caracteres ambíguos (O/0, I/1) pra não dar confusão na hora de
+// alguém ler o código de uma foto.
+function gerarCodigoVoucher() {
+    const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let bloco1 = '';
+    let bloco2 = '';
+    for (let i = 0; i < 4; i++) {
+        bloco1 += alfabeto[Math.floor(Math.random() * alfabeto.length)];
+        bloco2 += alfabeto[Math.floor(Math.random() * alfabeto.length)];
     }
-
-    try {
-        const qr = qrcode(0, 'M'); // typeNumber 0 = auto-detecta o tamanho necessário
-        qr.addData(FORMULARIO_SEGURO_URL);
-        qr.make();
-        container.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
-    } catch (erro) {
-        console.warn('Não foi possível gerar o QR Code:', erro);
-        container.innerHTML = '<p style="color:#101010;font-size:12px;padding:10px;">Erro ao gerar QR Code.</p>';
-    }
+    return `CF-${bloco1}-${bloco2}`;
 }
 
-function copiarLinkFormulario() {
-    const status = document.getElementById("qrCopiarStatus");
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(FORMULARIO_SEGURO_URL)
-            .then(() => { status.textContent = "Link copiado!"; })
-            .catch(() => { status.textContent = FORMULARIO_SEGURO_URL; });
-    } else {
-        status.textContent = FORMULARIO_SEGURO_URL;
-    }
+function formatarDataHoraBR(data) {
+    return data.toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
 }
 
 function closeModal() {
@@ -672,7 +656,7 @@ function enviarParaSheets(registro, indice) {
         // text/plain evita o preflight OPTIONS, que o Apps Script
         // não trata bem e causaria erro de CORS.
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ id: registro.id, nome: registro.nome, giroId: registro.giroId, token: API_TOKEN })
+        body: JSON.stringify({ id: registro.id, nome: registro.nome, giroId: registro.giroId, voucher: registro.voucher || '', token: API_TOKEN })
     })
     .then(response => response.json())
     .then(() => {

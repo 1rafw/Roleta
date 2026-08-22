@@ -46,22 +46,15 @@
             <h2 id="modalTitulo">Parabéns! 🎉</h2>
             <p id="winnerText"></p>
 
-            <div class="qr-block" id="qrBlock">
-                <p class="qr-info">Escaneie com o celular pra deixar seus dados — entramos em contato pra fechar o Seguro Residencial:</p>
-                <div class="qr-codigo" id="qrCodigo"></div>
-                <div class="qr-link-alt">Não conseguiu escanear?</div>
-                <button class="qr-copiar-btn" onclick="copiarLinkFormulario()" id="btnCopiarLink">Copiar link do formulário</button>
-                <div class="qr-copiar-status" id="qrCopiarStatus"></div>
+            <div class="voucher-block" id="voucherBlock">
+                <p class="voucher-info">Tire uma foto deste código e apresente no contato para resgatar seu Seguro Residencial:</p>
+                <div class="voucher-codigo" id="voucherCodigo"></div>
+                <div class="voucher-data" id="voucherData"></div>
             </div>
 
             <button class="modal-btn modal-btn-fechar" onclick="closeModal()" id="btnFecharModal" aria-label="Fechar">Resgatar Prêmio</button>
         </div>
     </div>
-
-    <!-- Biblioteca de geração de QR Code, 100% local (sem CDN externo) —
-         gera o QR direto no navegador, funciona mesmo com internet instável,
-         já que só depende do JS carregado junto com a própria página. -->
-    <script src="qrcode.min.js"></script>
 
     <script src="script.js"></script>
 </body>

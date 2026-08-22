@@ -227,6 +227,88 @@
             padding: 16px 0;
         }
 
+        .voucher-box {
+            margin-top: 24px;
+            background: rgba(244, 246, 249, 0.05);
+            border: 1px solid rgba(244, 246, 249, 0.12);
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+        .voucher-box h3 {
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .voucher-busca {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .voucher-busca input {
+            flex: 1;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(244, 246, 249, 0.2);
+            background: rgba(16, 16, 16, 0.4);
+            color: #F4F6F9;
+            font-size: 16px;
+            font-family: 'Courier New', Courier, monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .voucher-busca input:focus {
+            outline: none;
+            border-color: #0072bb;
+        }
+        .voucher-resultado {
+            margin-top: 12px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+        .voucher-resultado.valido {
+            color: #4ade80;
+        }
+        .voucher-resultado.invalido {
+            color: #f87171;
+        }
+        .voucher-lista-header {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: rgba(244, 246, 249, 0.55);
+            margin: 18px 0 10px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(244, 246, 249, 0.08);
+        }
+        .voucher-lista {
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .voucher-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(244, 246, 249, 0.04);
+            font-size: 13px;
+        }
+        .voucher-item .codigo {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .voucher-item .hora {
+            color: rgba(244, 246, 249, 0.55);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
         .ajustes-box {
             margin-top: 24px;
             background: rgba(244, 246, 249, 0.05);
@@ -434,6 +516,21 @@
             </div>
         </div>
 
+        <div class="voucher-box">
+            <h3>Conferir Voucher</h3>
+            <p class="ajustes-sub">Digite o código da foto que a pessoa apresentou para validar o resgate.</p>
+            <div class="voucher-busca">
+                <input type="text" id="inputVoucher" placeholder="CF-XXXX-XXXX" aria-label="Código do voucher">
+                <button class="ajuste-btn" onclick="conferirVoucher()">Conferir</button>
+            </div>
+            <div class="voucher-resultado" id="voucherResultado"></div>
+
+            <div class="voucher-lista-header">Vouchers emitidos</div>
+            <div class="voucher-lista" id="voucherLista">
+                <div class="historico-vazio">Carregando...</div>
+            </div>
+        </div>
+
         <div class="ajustes-box">
             <h3>Ajustes Manuais</h3>
             <p class="ajustes-sub">Use apenas se a contagem digital divergir do estoque físico real.</p>
@@ -465,7 +562,7 @@
         // ==========================================================
         // CONFIGURAÇÃO — use a MESMA URL do Apps Script usada no index.html
         // ==========================================================
-        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycby0uqtW5gOh88K6_izV4xbh_or87FXIbeysz-ptqprPIWQlSiapXL_Q2BgAIu1CryYf8g/exec";
+        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyA-nNT8B0F2nTf13A3GNm_twwx4kDvWKY-GCku5amXcQZBaWD2fuPOCFcUYBQ_rBmc5A/exec";
         const INTERVALO_ATUALIZACAO_MS = 15000; // 15s
 
         // Precisa ser IDÊNTICO ao TOKEN_SECRETO do Apps Script e ao
@@ -601,6 +698,7 @@
 
                     renderizarPremios(porPremio);
                     renderizarHistorico(data.ultimosGiros || []);
+                    renderizarVouchers(data.vouchers || []);
 
                     // Pré-preenche o campo de ajuste manual, só se o usuário
                     // não estiver digitando nele agora (evita sobrescrever)
@@ -661,11 +759,11 @@
                     }
 
                     const giros = data.todosGiros || [];
-                    const linhas = ['Data_Hora,ID_Premio,Nome_Premio'];
+                    const linhas = ['Data_Hora,ID_Premio,Nome_Premio,Voucher'];
                     giros.forEach(g => {
                         // escapa vírgulas/aspas do nome do prêmio, por segurança
                         const nomeEscapado = '"' + String(g.nome || '').replace(/"/g, '""') + '"';
-                        linhas.push(`${g.dataHora},${g.id},${nomeEscapado}`);
+                        linhas.push(`${g.dataHora},${g.id},${nomeEscapado},${g.voucher || ''}`);
                     });
 
                     const csvConteudo = linhas.join('\n');
@@ -687,6 +785,59 @@
                 .finally(() => {
                     btn.textContent = textoOriginal;
                     btn.disabled = false;
+                });
+        }
+
+        function renderizarVouchers(lista) {
+            const container = document.getElementById('voucherLista');
+
+            if (!lista || !lista.length) {
+                container.innerHTML = '<div class="historico-vazio">Nenhum voucher emitido ainda.</div>';
+                return;
+            }
+
+            container.innerHTML = lista.map(v => `
+                <div class="voucher-item">
+                    <span class="codigo">${v.codigo}</span>
+                    <span class="hora">${v.dataHora}</span>
+                </div>
+            `).join('');
+        }
+
+        function conferirVoucher() {
+            const codigo = document.getElementById('inputVoucher').value.trim();
+            const resultado = document.getElementById('voucherResultado');
+
+            if (!codigo) {
+                resultado.textContent = 'Digite um código para conferir.';
+                resultado.className = 'voucher-resultado invalido';
+                return;
+            }
+
+            resultado.textContent = 'Conferindo...';
+            resultado.className = 'voucher-resultado';
+
+            fetch(SHEETS_ENDPOINT + '?t=' + Date.now() + '&token=' + encodeURIComponent(API_TOKEN) + '&voucher=' + encodeURIComponent(codigo))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'erro') {
+                        resultado.textContent = data.mensagem || 'Erro ao conferir.';
+                        resultado.className = 'voucher-resultado invalido';
+                        return;
+                    }
+
+                    if (data.encontrado) {
+                        resultado.textContent = `✓ Válido — ${data.voucher.premio}, sorteado em ${data.voucher.dataHora}`;
+                        resultado.className = 'voucher-resultado valido';
+                    } else {
+                        resultado.textContent = '✗ Código não encontrado nos registros.';
+                        resultado.className = 'voucher-resultado invalido';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao conferir voucher:', error);
+                    resultado.textContent = 'Erro de conexão ao conferir.';
+                    resultado.className = 'voucher-resultado invalido';
                 });
         }
 
