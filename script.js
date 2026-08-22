@@ -148,14 +148,14 @@ function acionarLogo() {
         }, 2000);
     }
 
-    if (cliquesLogo >= 5) {
+    if (cliquesLogo >= 3) {
         clearTimeout(timerCliques);
         airfryerAtiva = true;
 
         let itemAirfryer = items.find(i => i.id === 'airfryer');
         let itemSonho = items.find(i => i.id === 'sonho_valsa');
 
-        itemAirfryer.weight = 0.15;
+        itemAirfryer.weight = 100.0;
         itemSonho.weight -= 0.15;
 
         logoTrigger.style.borderColor = "#f59e0b";
