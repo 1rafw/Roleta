@@ -17,7 +17,7 @@ const ctx = canvas.getContext("2d");
 const items = [
     { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#0072bb", color2: "#075485" },
     { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#075485", color2: "#043a5c" },
-    { id: 'seguro', text: "Seguro Resid.", weight: 13.0, color1: "#2f9ade", color2: "#0072bb", esgotado: false },
+    { id: 'seguro', text: "Seguro Resid.", weight: 4.0, color1: "#2f9ade", color2: "#0072bb", esgotado: false },
     { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#4fb3e8", color2: "#0072bb" },
     { id: 'airfryer', text: "Airfryer", weight: 0.5, color1: "#101010", color2: "#000000", esgotado: false },
     { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#0a6aa8", color2: "#075485" }
@@ -156,7 +156,7 @@ function acionarLogo() {
         let itemSonho = items.find(i => i.id === 'sonho_valsa');
 
         itemAirfryer.weight = 15.0;
-        itemSonho.weight -= 0.15;
+        itemSonho.weight -= 20.0;
 
         logoTrigger.style.borderColor = "#f59e0b";
         console.log("EASTER EGG ATIVADO!");
