@@ -9,18 +9,22 @@ const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwQR2qXJ374b0YL
 // Sem isso, qualquer pessoa com a URL do /exec poderia mandar
 // requisições falsas e sujar seus dados de inventário.
 // ==========================================================
-const API_TOKEN = "VoIovGbGcHdzstW9MEPSG9fBBqBZ0ZBouahLqfi7Lw4W3VdoVYHvcUG7Jvk6zhls";
+const API_TOKEN = "TROQUE_ESTE_TOKEN";
 
 const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
 
+// Paleta alternada: azul da marca, azul claro e mostarda se intercalam
+// para dar ritmo visual. A Airfryer usa vermelho vivo + brilho porque é
+// o prêmio máximo e precisa puxar o olho na hora.
+// `textColor` existe porque texto branco some sobre a mostarda.
 const items = [
-    { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#0072bb", color2: "#0072bb" },
-    { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#0072bb", color2: "#0072bb" },
-    { id: 'seguro', text: "Seguro Resid.", weight: 13.0, color1: "#0072bb", color2: "#0072bb", esgotado: false },
-    { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#0072bb", color2: "#0072bb" },
-    { id: 'airfryer', text: "Airfryer", weight: 0.5, color1: "#101010", color2: "#101010", esgotado: false },
-    { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#0072bb", color2: "#0072bb" }
+    { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
+    { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'seguro', text: "Seguro Resid.", weight: 13.0, color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF", esgotado: false },
+    { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'airfryer', text: "Airfryer", weight: 0.5, color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true, esgotado: false },
+    { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" }
 ];
 
 let contadorSeguro = 0;
@@ -178,41 +182,202 @@ const totalSlices = items.length;
 const sliceAngle = (2 * Math.PI) / totalSlices;
 let isSpinning = false;
 
+// ==========================================================
+// ÍCONES DOS PRÊMIOS — desenhados como vetor no próprio canvas.
+// Nada de arquivos externos: menos requisições, funciona offline e
+// escala sem perder nitidez. Cada função desenha centrada em (0,0)
+// dentro de uma caixa de tamanho `s`, usando a cor já definida em
+// ctx.fillStyle / ctx.strokeStyle.
+// ==========================================================
+const ICONES = {
+    // Todos os ícones são de LINHA (stroke), não silhueta cheia: em fatias
+    // claras (âmbar) uma silhueta preta vira um borrão. Contorno funciona
+    // bem em qualquer cor de fundo e mantém o desenho legível pequeno.
+    _prep(ctx, s) {
+        ctx.strokeStyle = ctx.fillStyle;
+        ctx.lineWidth = Math.max(1.6, s * 0.085);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+    },
+
+    _roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    },
+
+    // Bombom embrulhado
+    sonho_valsa(ctx, s) {
+        ICONES._prep(ctx, s);
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.26, 0, Math.PI * 2);
+        ctx.stroke();
+        [-1, 1].forEach(lado => {
+            ctx.beginPath();
+            ctx.moveTo(lado * s * 0.24, -s * 0.1);
+            ctx.lineTo(lado * s * 0.48, -s * 0.22);
+            ctx.lineTo(lado * s * 0.48, s * 0.22);
+            ctx.lineTo(lado * s * 0.24, s * 0.1);
+            ctx.stroke();
+        });
+    },
+
+    // Agenda + caneta
+    kit(ctx, s) {
+        ICONES._prep(ctx, s);
+        ICONES._roundRect(ctx, -s * 0.44, -s * 0.34, s * 0.46, s * 0.68, s * 0.06);
+        ctx.stroke();
+        for (let i = -1; i <= 1; i++) {
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.34, i * s * 0.17);
+            ctx.lineTo(-s * 0.08, i * s * 0.17);
+            ctx.stroke();
+        }
+        // caneta na diagonal
+        ctx.beginPath();
+        ctx.moveTo(s * 0.14, s * 0.32);
+        ctx.lineTo(s * 0.42, -s * 0.24);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(s * 0.42, -s * 0.24);
+        ctx.lineTo(s * 0.48, -s * 0.36);
+        ctx.lineTo(s * 0.36, -s * 0.3);
+        ctx.closePath();
+        ctx.stroke();
+    },
+
+    // Casa (seguro residencial)
+    seguro(ctx, s) {
+        ICONES._prep(ctx, s);
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.42, -s * 0.04);
+        ctx.lineTo(0, -s * 0.38);
+        ctx.lineTo(s * 0.42, -s * 0.04);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.3, -s * 0.04);
+        ctx.lineTo(-s * 0.3, s * 0.36);
+        ctx.lineTo(s * 0.3, s * 0.36);
+        ctx.lineTo(s * 0.3, -s * 0.04);
+        ctx.stroke();
+        // porta
+        ctx.beginPath();
+        ctx.rect(-s * 0.09, s * 0.1, s * 0.18, s * 0.26);
+        ctx.stroke();
+    },
+
+    // Caixa de som
+    caixa_som(ctx, s) {
+        ICONES._prep(ctx, s);
+        ICONES._roundRect(ctx, -s * 0.3, -s * 0.42, s * 0.6, s * 0.84, s * 0.08);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, s * 0.12, s * 0.17, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, -s * 0.22, s * 0.075, 0, Math.PI * 2);
+        ctx.stroke();
+    },
+
+    // Airfryer (fritadeira elétrica)
+    airfryer(ctx, s) {
+        ICONES._prep(ctx, s);
+        // corpo
+        ICONES._roundRect(ctx, -s * 0.32, -s * 0.3, s * 0.64, s * 0.68, s * 0.12);
+        ctx.stroke();
+        // painel / linha da gaveta
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.32, s * 0.02);
+        ctx.lineTo(s * 0.32, s * 0.02);
+        ctx.stroke();
+        // botão
+        ctx.beginPath();
+        ctx.arc(s * 0.14, -s * 0.14, s * 0.07, 0, Math.PI * 2);
+        ctx.stroke();
+        // puxador da gaveta
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.12, s * 0.22);
+        ctx.lineTo(s * 0.12, s * 0.22);
+        ctx.stroke();
+    },
+
+    // Garrafa squeeze
+    garrafa(ctx, s) {
+        ICONES._prep(ctx, s);
+        // corpo
+        ICONES._roundRect(ctx, -s * 0.2, -s * 0.12, s * 0.4, s * 0.52, s * 0.09);
+        ctx.stroke();
+        // gargalo
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.09, -s * 0.12);
+        ctx.lineTo(-s * 0.09, -s * 0.3);
+        ctx.lineTo(s * 0.09, -s * 0.3);
+        ctx.lineTo(s * 0.09, -s * 0.12);
+        ctx.stroke();
+        // tampa
+        ICONES._roundRect(ctx, -s * 0.12, -s * 0.42, s * 0.24, s * 0.12, s * 0.04);
+        ctx.stroke();
+    }
+};
+
 function drawWheel(rotation = 0) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const radius = canvas.width / 2;
+    const raioTotal = canvas.width / 2;
 
     // Fator de escala relativo ao design original (canvas de 420px,
     // raio 210px) — assim fontes, traços e espaçamentos continuam
     // proporcionais mesmo com o canvas rodando em resolução maior.
-    const escala = radius / 210;
+    const escala = raioTotal / 210;
+
+    // O aro metálico agora é desenhado DENTRO do canvas (antes era uma
+    // border do CSS, que não aceita gradiente). Por isso as fatias param
+    // um pouco antes da borda.
+    const larguraAro = 15 * escala;
+    const radius = raioTotal - larguraAro;
 
     for (let i = 0; i < totalSlices; i++) {
         const startAngle = rotation + i * sliceAngle;
         const endAngle = startAngle + sliceAngle;
-
-        const estaEsgotado = !!items[i].esgotado;
+        const item = items[i];
+        const estaEsgotado = !!item.esgotado;
+        const ehDestaque = !!item.destaque && !estaEsgotado;
 
         const sliceGradient = ctx.createRadialGradient(centerX, centerY, 40 * escala, centerX, centerY, radius);
         if (estaEsgotado) {
             sliceGradient.addColorStop(0, "#4b5563");
             sliceGradient.addColorStop(1, "#1f2937");
         } else {
-            sliceGradient.addColorStop(0, items[i].color1);
-            sliceGradient.addColorStop(1, items[i].color2);
+            sliceGradient.addColorStop(0, item.color1);
+            sliceGradient.addColorStop(1, item.color2);
         }
 
+        ctx.save();
+        // Brilho externo no prêmio principal: chama o olho pra fatia certa
+        if (ehDestaque) {
+            ctx.shadowColor = "rgba(255, 196, 60, 0.95)";
+            ctx.shadowBlur = 26 * escala;
+        }
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
         ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
         ctx.fillStyle = sliceGradient;
         ctx.fill();
+        ctx.restore();
 
         if (estaEsgotado) {
             // leve efeito "hachurado" pra reforçar visualmente que saiu de jogo
             ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+            ctx.closePath();
             ctx.clip();
             ctx.strokeStyle = "rgba(0,0,0,0.35)";
             ctx.lineWidth = 3 * escala;
@@ -224,49 +389,126 @@ function drawWheel(rotation = 0) {
             }
             ctx.restore();
         }
-        
-        ctx.lineWidth = 6 * escala;
-        ctx.strokeStyle = "#F4F6F9";
-        ctx.stroke();
 
+        // ----- conteúdo da fatia: ícone + texto -----
         ctx.save();
         ctx.translate(centerX, centerY);
-        
+
         const midAngle = startAngle + sliceAngle / 2;
         ctx.rotate(midAngle);
 
-        ctx.fillStyle = estaEsgotado ? "#9ca3af" : "#F4F6F9";
-        ctx.font = `bold ${Math.round(15 * escala)}px 'Segoe UI', Tahoma, sans-serif`;
-        ctx.shadowColor = "rgba(0, 0, 0, 0.95)"; 
-        ctx.shadowBlur = 6 * escala;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-
-        const maxTextWidth = 110 * escala; 
-        const lineHeight = 17 * escala;
-        const inset = 15 * escala;
         const normalizedAngle = (midAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
         const isLeftHalf = normalizedAngle > Math.PI / 2 && normalizedAngle < (3 * Math.PI) / 2;
+        // vira o conteúdo na metade esquerda pra nunca ficar de cabeça pra baixo.
+        // Depois do rotate(PI) o "pra fora" do disco passa a ser o -x, por isso
+        // todas as distâncias abaixo são multiplicadas por `sinal`.
+        if (isLeftHalf) ctx.rotate(Math.PI);
+        const sinal = isLeftHalf ? -1 : 1;
 
-        const textoExibido = estaEsgotado ? "ESGOTADO" : items[i].text;
+        const corConteudo = estaEsgotado ? "#9ca3af" : (item.textColor || "#FFFFFF");
+
+        // Ícone: encostado na borda externa.
+        // As faixas de ícone e texto são separadas de propósito:
+        // ícone ocupa ~0.72r–0.92r, texto ocupa ~0.33r–0.69r, e a logo
+        // central termina por volta de 0.31r. Assim nada se sobrepõe.
+        if (!estaEsgotado) {
+            ctx.save();
+            ctx.translate(sinal * radius * 0.82, 0);
+            ctx.fillStyle = corConteudo;
+            ctx.shadowColor = "rgba(0,0,0,0.45)";
+            ctx.shadowBlur = 5 * escala;
+            const desenhar = ICONES[item.id];
+            if (desenhar) desenhar(ctx, 38 * escala);
+            ctx.restore();
+        }
+
+        // Texto: logo abaixo do ícone (mais pra dentro do raio), mas ainda
+        // longe o bastante do centro pra não passar por baixo da logo
+        ctx.fillStyle = corConteudo;
+        ctx.font = `bold ${Math.round(14 * escala)}px 'Segoe UI', Tahoma, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = corConteudo === "#FFFFFF" ? "rgba(0, 0, 0, 0.75)" : "rgba(255,255,255,0.35)";
+        ctx.shadowBlur = 4 * escala;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 1;
+
+        // largura limitada pra caber na faixa livre entre a logo central
+        // e o ícone — sem isso, textos longos passam por baixo de um dos dois
+        const maxTextWidth = radius * 0.34;
+        const lineHeight = 16 * escala;
+        const textoExibido = estaEsgotado ? "ESGOTADO" : item.text;
         const linhas = quebrarTextoEmLinhas(ctx, textoExibido, maxTextWidth);
+        const baseTexto = sinal * radius * (estaEsgotado ? 0.60 : 0.51);
         const offsetInicial = -((linhas.length - 1) * lineHeight) / 2;
 
-        if (isLeftHalf) {
-            ctx.rotate(Math.PI);
-            ctx.textAlign = "left";
-            linhas.forEach((linha, idx) => {
-                ctx.fillText(linha, -(radius - inset), offsetInicial + idx * lineHeight, maxTextWidth);
-            });
-        } else {
-            ctx.textAlign = "right";
-            linhas.forEach((linha, idx) => {
-                ctx.fillText(linha, radius - inset, offsetInicial + idx * lineHeight, maxTextWidth);
-            });
-        }
+        linhas.forEach((linha, idx) => {
+            ctx.fillText(linha, baseTexto, offsetInicial + idx * lineHeight, maxTextWidth);
+        });
 
         ctx.restore();
     }
+
+    desenharSeparadores(centerX, centerY, radius, rotation, escala);
+    desenharAroMetalico(centerX, centerY, radius, raioTotal, escala);
+}
+
+// Cria um gradiente prateado que atravessa a roda na diagonal, simulando
+// luz batendo no metal. Usado no aro e nos separadores.
+function gradienteMetalico(centerX, centerY, raio) {
+    const g = ctx.createLinearGradient(centerX - raio, centerY - raio, centerX + raio, centerY + raio);
+    g.addColorStop(0.00, "#ffffff");
+    g.addColorStop(0.18, "#c9d3dd");
+    g.addColorStop(0.35, "#f7fafc");
+    g.addColorStop(0.52, "#98a5b3");
+    g.addColorStop(0.70, "#eef2f6");
+    g.addColorStop(0.86, "#aab6c2");
+    g.addColorStop(1.00, "#ffffff");
+    return g;
+}
+
+// Linhas divisórias com aparência de metal escovado
+function desenharSeparadores(centerX, centerY, radius, rotation, escala) {
+    ctx.save();
+    ctx.strokeStyle = gradienteMetalico(centerX, centerY, radius);
+    ctx.lineWidth = 5 * escala;
+    ctx.lineCap = "round";
+    ctx.shadowColor = "rgba(0,0,0,0.4)";
+    ctx.shadowBlur = 3 * escala;
+
+    for (let i = 0; i < totalSlices; i++) {
+        const ang = rotation + i * sliceAngle;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX + Math.cos(ang) * radius, centerY + Math.sin(ang) * radius);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+// Aro externo metálico, com uma linha escura interna e outra externa pra
+// dar volume (parece um anel de alumínio, não um traço chapado)
+function desenharAroMetalico(centerX, centerY, radius, raioTotal, escala) {
+    const meio = (radius + raioTotal) / 2;
+    const largura = raioTotal - radius;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, meio, 0, Math.PI * 2);
+    ctx.strokeStyle = gradienteMetalico(centerX, centerY, raioTotal);
+    ctx.lineWidth = largura;
+    ctx.stroke();
+
+    // sombreado nas duas bordas do aro = sensação de relevo
+    ctx.lineWidth = Math.max(1, 1.5 * escala);
+    ctx.strokeStyle = "rgba(0,0,0,0.45)";
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius + largura * 0.02, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, raioTotal - largura * 0.06, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
 }
 
 // Quebra o texto do prêmio em várias linhas para caber bem
