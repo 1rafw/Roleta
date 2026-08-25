@@ -34,7 +34,7 @@ const items = [
     { id: 'mochila',     text: "Mochila",             estoque: 10,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
     { id: 'airfryer',    text: "Airfryer",            estoque: 1,   color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true },
     { id: 'caixa_som',   text: "Caixa de Som",        estoque: 10,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
-    { id: 'seguro',      text: "Seguro Resid.",       estoque: 10,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206", voucher: true },
+    { id: 'seguro',      text: "Seguro Residencial",  estoque: 10,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206", voucher: true },
     { id: 'voucher_auto',text: "Voucher Auto R$100",  estoque: 5,   color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF", voucher: true }
 ];
 
@@ -729,7 +729,7 @@ function showModal(premio) {
 
     // Airfryer é o prêmio mais raro (1 unidade só) — comemoração maior
     if (ehAirfryer) {
-        titulo.textContent = "PRÊMIO RARÍSSIMO! 🎉🔥";
+        titulo.textContent = "PRÊMIO PRINCIPAL! 🎉🔥";
         modalContent.classList.add("especial");
     } else {
         titulo.textContent = "Parabéns! 🎉";
