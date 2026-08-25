@@ -500,7 +500,7 @@
             </div>
             <div class="summary-card">
                 <div class="valor" id="segurosRestantes">—</div>
-                <div class="rotulo">Seguros restantes</div>
+                <div class="rotulo">Brindes restantes</div>
             </div>
         </div>
 
@@ -606,13 +606,17 @@
 
         // Espelha a lista de prêmios do index.html só para exibição
         // (nome, cor e limite). Se você mudar os prêmios lá, replique aqui.
+        // Espelha a lista do script.js. Todo prêmio agora tem `limite`
+        // (o estoque real), então o painel mostra quanto resta de cada um.
         const CONFIG_PREMIOS = [
-            { id: 'sonho_valsa', nome: 'Sonho de Valsa', cor: '#0072bb' },
-            { id: 'kit', nome: 'Kit Caneta + Agenda', cor: '#075485' },
-            { id: 'seguro', nome: 'Seguro Resid.', cor: '#2f9ade', limite: 10 },
-            { id: 'caixa_som', nome: 'Caixa de Som', cor: '#4fb3e8' },
-            { id: 'airfryer', nome: 'Airfryer', cor: '#101010', unico: true },
-            { id: 'garrafa', nome: 'Garrafa Squeeze', cor: '#0a6aa8' }
+            { id: 'bombom', nome: 'Bombom', cor: '#0072bb', limite: 350 },
+            { id: 'caneta', nome: 'Caneta', cor: '#E8A020', limite: 50 },
+            { id: 'kit', nome: 'Kit Caneta + Agenda', cor: '#2f9ade', limite: 10 },
+            { id: 'mochila', nome: 'Mochila', cor: '#E8A020', limite: 10 },
+            { id: 'airfryer', nome: 'Airfryer', cor: '#f03e3e', limite: 1 },
+            { id: 'caixa_som', nome: 'Caixa de Som', cor: '#2f9ade', limite: 10 },
+            { id: 'seguro', nome: 'Seguro Resid.', cor: '#E8A020', limite: 10 },
+            { id: 'voucher_auto', nome: 'Voucher Auto R$100', cor: '#2f9ade', limite: 5 }
         ];
 
         function setStatus(estado, texto) {
@@ -693,8 +697,12 @@
 
                     document.getElementById('totalGiros').textContent = totalGiros;
 
-                    const seguroContagem = porPremio.seguro || 0;
-                    document.getElementById('segurosRestantes').textContent = Math.max(10 - seguroContagem, 0);
+                    // Total de unidades ainda em estoque, somando todos os prêmios
+                    const restanteTotal = CONFIG_PREMIOS.reduce((soma, cfg) => {
+                        const saiu = porPremio[cfg.id] || 0;
+                        return soma + Math.max((cfg.limite || 0) - saiu, 0);
+                    }, 0);
+                    document.getElementById('segurosRestantes').textContent = restanteTotal;
 
                     renderizarPremios(porPremio);
                     renderizarHistorico(data.ultimosGiros || []);

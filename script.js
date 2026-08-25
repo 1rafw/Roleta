@@ -9,7 +9,7 @@ const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwQR2qXJ374b0YL
 // Sem isso, qualquer pessoa com a URL do /exec poderia mandar
 // requisições falsas e sujar seus dados de inventário.
 // ==========================================================
-const API_TOKEN = "TROQUE_ESTE_TOKEN";
+const API_TOKEN = "VoIovGbGcHdzstW9MEPSG9fBBqBZ0ZBouahLqfi7Lw4W3VdoVYHvcUG7Jvk6zhls";
 
 const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
@@ -18,21 +18,39 @@ const ctx = canvas.getContext("2d");
 // para dar ritmo visual. A Airfryer usa vermelho vivo + brilho porque é
 // o prêmio máximo e precisa puxar o olho na hora.
 // `textColor` existe porque texto branco some sobre a mostarda.
+//
+// ESTOQUE E PESO: o `weight` de cada item é igual ao seu `estoque`. Isso
+// faz a probabilidade ser proporcional ao que existe de verdade, então
+// todos os prêmios tendem a acabar por volta do mesmo giro (~446) em vez
+// de um sumir na primeira meia hora e outro sobrar no fim. Quando um item
+// esgota, o peso dele é transferido pro item de reposição (ITEM_REPOSICAO).
+//
+// `voucher: true` = prêmio resgatado depois, fora do estande: gera um
+// código único que a pessoa fotografa e que fica gravado na planilha.
 const items = [
-    { id: 'sonho_valsa', text: "Sonho de Valsa", weight: 61.0, color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
-    { id: 'kit', text: "Kit Caneta + Agenda", weight: 20.0, color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'seguro', text: "Seguro Resid.", weight: 13.0, color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF", esgotado: false },
-    { id: 'caixa_som', text: "Caixa de Som", weight: 3.0, color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'airfryer', text: "Airfryer", weight: 0.5, color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true, esgotado: false },
-    { id: 'garrafa', text: "Garrafa Squeeze", weight: 11.0, color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" }
+    { id: 'bombom',      text: "Bombom",              estoque: 350, color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
+    { id: 'caneta',      text: "Caneta",              estoque: 50,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'kit',         text: "Kit Caneta + Agenda", estoque: 10,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
+    { id: 'mochila',     text: "Mochila",             estoque: 10,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'airfryer',    text: "Airfryer",            estoque: 1,   color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true },
+    { id: 'caixa_som',   text: "Caixa de Som",        estoque: 10,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
+    { id: 'seguro',      text: "Seguro Resid.",       estoque: 10,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206", voucher: true },
+    { id: 'voucher_auto',text: "Voucher Auto R$100",  estoque: 5,   color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF", voucher: true }
 ];
 
-let contadorSeguro = 0;
-const LIMITE_SEGURO = 10;
+// Item que absorve o peso dos prêmios esgotados (o de maior estoque)
+const ITEM_REPOSICAO = 'bombom';
+
+// Inicializa peso = estoque e o contador de saídas de cada prêmio
+items.forEach(item => {
+    item.weight = item.estoque;
+    item.saidas = 0;
+    item.esgotado = false;
+});
 
 let cliquesLogo = 0;
 let timerCliques = null;
-let airfryerAtiva = false;
+let airfryerForcada = false;
 
 // ==========================================================
 // PERSISTÊNCIA DE ESTADO DA ROLETA (esgotados, contador, easter egg)
@@ -43,9 +61,8 @@ const STORAGE_KEY_ESTADO = 'estado_roleta_cf';
 
 function salvarEstadoRoleta() {
     const estado = {
-        pesos: items.map(i => ({ id: i.id, weight: i.weight, esgotado: !!i.esgotado })),
-        contadorSeguro,
-        airfryerAtiva
+        premios: items.map(i => ({ id: i.id, weight: i.weight, saidas: i.saidas, esgotado: !!i.esgotado })),
+        airfryerForcada
     };
     localStorage.setItem(STORAGE_KEY_ESTADO, JSON.stringify(estado));
 }
@@ -53,20 +70,19 @@ function salvarEstadoRoleta() {
 function carregarEstadoRoleta() {
     try {
         const salvo = JSON.parse(localStorage.getItem(STORAGE_KEY_ESTADO) || 'null');
-        if (!salvo) return;
+        if (!salvo || !salvo.premios) return;
 
-        salvo.pesos.forEach(p => {
+        salvo.premios.forEach(p => {
             const item = items.find(i => i.id === p.id);
             if (item) {
                 item.weight = p.weight;
+                item.saidas = p.saidas || 0;
                 item.esgotado = !!p.esgotado;
             }
         });
 
-        contadorSeguro = salvo.contadorSeguro || 0;
-        airfryerAtiva = !!salvo.airfryerAtiva;
-
-        if (airfryerAtiva) {
+        airfryerForcada = !!salvo.airfryerForcada;
+        if (airfryerForcada) {
             logoTrigger.style.borderColor = "#f59e0b";
         }
     } catch (e) {
@@ -74,38 +90,43 @@ function carregarEstadoRoleta() {
     }
 }
 
-// Zera o peso do Seguro Residencial, transfere para o Sonho de Valsa
-// e marca como esgotado (efeito visual cinza). Idempotente: chamar
-// de novo não tem efeito colateral se já estiver esgotado.
-function aplicarEsgotamentoSeguro() {
-    const itemSeguro = items.find(i => i.id === 'seguro');
-    const itemSonho = items.find(i => i.id === 'sonho_valsa');
-    if (itemSeguro.esgotado) return;
+// Marca um prêmio como esgotado: zera o peso dele e transfere para o
+// item de reposição, mantendo a soma dos pesos estável. Genérico (serve
+// pra qualquer prêmio) e idempotente — chamar de novo não faz nada.
+function aplicarEsgotamento(id) {
+    const item = items.find(i => i.id === id);
+    if (!item || item.esgotado) return false;
 
-    itemSonho.weight += itemSeguro.weight;
-    itemSeguro.weight = 0;
-    itemSeguro.esgotado = true;
+    // Só transfere se a reposição ainda tiver estoque. Sem essa checagem,
+    // um prêmio esgotado depois "ressuscitava" o item de reposição já
+    // esgotado, que voltava a ser sorteado além do estoque real.
+    const reposicao = items.find(i => i.id === ITEM_REPOSICAO);
+    if (reposicao && reposicao.id !== item.id && !reposicao.esgotado) {
+        reposicao.weight += item.weight;
+    }
+    item.weight = 0;
+    item.esgotado = true;
+    return true;
 }
 
-// Mesma lógica para a Airfryer: zera peso, devolve pro Sonho de
-// Valsa, marca esgotada e trava o easter egg (não reativa mais).
-function aplicarEsgotamentoAirfryer() {
-    const itemAirfryer = items.find(i => i.id === 'airfryer');
-    const itemSonho = items.find(i => i.id === 'sonho_valsa');
-    if (!itemAirfryer.esgotado) {
-        itemSonho.weight += itemAirfryer.weight;
-        itemAirfryer.weight = 0;
-        itemAirfryer.esgotado = true;
+// Registra a saída de um prêmio e esgota automaticamente ao atingir o estoque
+function registrarSaida(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+
+    item.saidas++;
+    if (item.saidas >= item.estoque) {
+        aplicarEsgotamento(id);
     }
-    airfryerAtiva = true;
+    salvarEstadoRoleta();
 }
 
 // ==========================================================
 // SINCRONIZAÇÃO COM O GOOGLE SHEETS (camada extra de segurança)
-// Consulta a planilha (fonte da verdade) via doGet e reconcilia
-// com o estado local — útil se o tablet trocar de navegador,
-// limpar dados, ou for substituído por outro no meio do evento.
-// Requer um doGet() no Apps Script (veja instruções abaixo).
+// A planilha é a fonte da verdade: se o tablet trocar de navegador,
+// limpar dados ou for substituído no meio do evento, o contador de
+// cada prêmio é recuperado daqui. Usa `porPremio`, que o doGet já
+// devolve com a contagem de todos os itens.
 // ==========================================================
 function sincronizarEstadoComSheets() {
     if (!SHEETS_ENDPOINT || SHEETS_ENDPOINT.includes('SEU_ID_AQUI')) return;
@@ -113,24 +134,27 @@ function sincronizarEstadoComSheets() {
     fetch(SHEETS_ENDPOINT + '?t=' + Date.now() + '&token=' + encodeURIComponent(API_TOKEN))
         .then(response => response.json())
         .then(data => {
+            const porPremio = data.porPremio || {};
             let mudou = false;
 
-            if (typeof data.contadorSeguro === 'number' && data.contadorSeguro > contadorSeguro) {
-                contadorSeguro = data.contadorSeguro;
-                mudou = true;
-            }
-            if (contadorSeguro >= LIMITE_SEGURO && !items.find(i => i.id === 'seguro').esgotado) {
-                aplicarEsgotamentoSeguro();
-                mudou = true;
-            }
-            if (data.airfryerGanha && !items.find(i => i.id === 'airfryer').esgotado) {
-                aplicarEsgotamentoAirfryer();
-                mudou = true;
-            }
+            items.forEach(item => {
+                const naPlanilha = porPremio[item.id] || 0;
+                // só sobe, nunca desce: evita que uma leitura parcial da
+                // planilha "devolva" prêmios que já saíram no tablet
+                if (naPlanilha > item.saidas) {
+                    item.saidas = naPlanilha;
+                    mudou = true;
+                }
+                if (item.saidas >= item.estoque && !item.esgotado) {
+                    aplicarEsgotamento(item.id);
+                    mudou = true;
+                }
+            });
 
             if (mudou) {
                 salvarEstadoRoleta();
                 drawWheel(currentAngle);
+                if (!isSpinning) atualizarDisponibilidade();
                 console.log('Estado sincronizado com a planilha.');
             }
         })
@@ -142,7 +166,9 @@ function sincronizarEstadoComSheets() {
 const logoTrigger = document.getElementById('logo-trigger');
 
 function acionarLogo() {
-    if (airfryerAtiva) return;
+    const airfryer = items.find(i => i.id === 'airfryer');
+    // se já foi forçada ou já saiu, não faz nada
+    if (airfryerForcada || !airfryer || airfryer.esgotado) return;
 
     cliquesLogo++;
 
@@ -154,17 +180,29 @@ function acionarLogo() {
 
     if (cliquesLogo >= 5) {
         clearTimeout(timerCliques);
-        airfryerAtiva = true;
+        airfryerForcada = true;
 
-        let itemAirfryer = items.find(i => i.id === 'airfryer');
-        let itemSonho = items.find(i => i.id === 'sonho_valsa');
+        // Com peso 1 em ~446, a Airfryer tem ~37% de chance de NÃO sair
+        // durante o evento inteiro. Este gatilho oculto turbina a chance
+        // dela pra ~20%, permitindo "provocar" a saída num momento
+        // escolhido (encerramento, cliente importante, etc).
+        const somaOutros = items
+            .filter(i => i.id !== 'airfryer' && !i.esgotado)
+            .reduce((s, i) => s + i.weight, 0);
+        const novoPeso = somaOutros * 0.25;
 
-        itemAirfryer.weight = 0.15;
-        itemSonho.weight -= 0.15;
+        // desconta do item de reposição pra soma total não inflar
+        const reposicao = items.find(i => i.id === ITEM_REPOSICAO);
+        const acrescimo = novoPeso - airfryer.weight;
+        if (reposicao && reposicao.weight > acrescimo) {
+            reposicao.weight -= acrescimo;
+        }
+        airfryer.weight = novoPeso;
 
         logoTrigger.style.borderColor = "#f59e0b";
-        console.log("EASTER EGG ATIVADO!");
+        console.log("EASTER EGG ATIVADO — chance da Airfryer turbinada.");
         salvarEstadoRoleta();
+        drawWheel(currentAngle);
     }
 }
 
@@ -211,7 +249,7 @@ const ICONES = {
     },
 
     // Bombom embrulhado
-    sonho_valsa(ctx, s) {
+    bombom(ctx, s) {
         ICONES._prep(ctx, s);
         ctx.beginPath();
         ctx.arc(0, 0, s * 0.26, 0, Math.PI * 2);
@@ -305,21 +343,73 @@ const ICONES = {
         ctx.stroke();
     },
 
-    // Garrafa squeeze
-    garrafa(ctx, s) {
+    // Caneta simples
+    caneta(ctx, s) {
+        ICONES._prep(ctx, s);
+        ctx.save();
+        ctx.rotate(-Math.PI / 6);
+        // corpo
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.09, -s * 0.38);
+        ctx.lineTo(s * 0.09, -s * 0.38);
+        ctx.lineTo(s * 0.09, s * 0.18);
+        ctx.lineTo(0, s * 0.4);
+        ctx.lineTo(-s * 0.09, s * 0.18);
+        ctx.closePath();
+        ctx.stroke();
+        // separação da ponta
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.09, s * 0.18);
+        ctx.lineTo(s * 0.09, s * 0.18);
+        ctx.stroke();
+        // clipe
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.09, -s * 0.28);
+        ctx.lineTo(s * 0.09, -s * 0.28);
+        ctx.stroke();
+        ctx.restore();
+    },
+
+    // Mochila
+    mochila(ctx, s) {
         ICONES._prep(ctx, s);
         // corpo
-        ICONES._roundRect(ctx, -s * 0.2, -s * 0.12, s * 0.4, s * 0.52, s * 0.09);
+        ICONES._roundRect(ctx, -s * 0.3, -s * 0.22, s * 0.6, s * 0.62, s * 0.12);
         ctx.stroke();
-        // gargalo
+        // alça superior
         ctx.beginPath();
-        ctx.moveTo(-s * 0.09, -s * 0.12);
-        ctx.lineTo(-s * 0.09, -s * 0.3);
-        ctx.lineTo(s * 0.09, -s * 0.3);
-        ctx.lineTo(s * 0.09, -s * 0.12);
+        ctx.arc(0, -s * 0.22, s * 0.16, Math.PI, 0);
         ctx.stroke();
-        // tampa
-        ICONES._roundRect(ctx, -s * 0.12, -s * 0.42, s * 0.24, s * 0.12, s * 0.04);
+        // bolso da frente
+        ICONES._roundRect(ctx, -s * 0.17, s * 0.08, s * 0.34, s * 0.24, s * 0.05);
+        ctx.stroke();
+    },
+
+    // Voucher / cupom de desconto
+    voucher_auto(ctx, s) {
+        ICONES._prep(ctx, s);
+        ICONES._roundRect(ctx, -s * 0.42, -s * 0.26, s * 0.84, s * 0.52, s * 0.07);
+        ctx.stroke();
+        // picote no meio
+        ctx.save();
+        ctx.setLineDash([s * 0.07, s * 0.07]);
+        ctx.beginPath();
+        ctx.moveTo(s * 0.12, -s * 0.26);
+        ctx.lineTo(s * 0.12, s * 0.26);
+        ctx.stroke();
+        ctx.restore();
+        // cifrão estilizado
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.09, -s * 0.1);
+        ctx.lineTo(-s * 0.24, -s * 0.1);
+        ctx.lineTo(-s * 0.24, 0);
+        ctx.lineTo(-s * 0.09, 0);
+        ctx.lineTo(-s * 0.09, s * 0.1);
+        ctx.lineTo(-s * 0.24, s * 0.1);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.165, -s * 0.17);
+        ctx.lineTo(-s * 0.165, s * 0.17);
         ctx.stroke();
     }
 };
@@ -531,8 +621,29 @@ function quebrarTextoEmLinhas(ctx, texto, larguraMaxima) {
     return linhas;
 }
 
+// Verifica se ainda existe algum prêmio com estoque. Sem isso, quando
+// tudo esgota o peso total vira 0, o sorteio cai sempre no primeiro item
+// e a roleta continua premiando sem estoque nenhum.
+function haPremiosDisponiveis() {
+    return items.some(item => !item.esgotado && item.weight > 0);
+}
+
+function atualizarDisponibilidade() {
+    const btn = document.getElementById("spinBtn");
+    if (!haPremiosDisponiveis()) {
+        btn.disabled = true;
+        btn.textContent = "Prêmios Esgotados";
+        return false;
+    }
+    btn.disabled = false;
+    btn.textContent = "Girar Roleta";
+    return true;
+}
+
 function spinWheel() {
     if (isSpinning) return;
+    if (!atualizarDisponibilidade()) return;
+
     isSpinning = true;
     document.getElementById("spinBtn").disabled = true;
 
@@ -548,18 +659,9 @@ function spinWheel() {
         }
     }
 
-    if (items[winningIndex].id === 'seguro') {
-        contadorSeguro++;
-        if (contadorSeguro >= LIMITE_SEGURO) {
-            aplicarEsgotamentoSeguro();
-        }
-        salvarEstadoRoleta();
-    }
-
-    if (items[winningIndex].id === 'airfryer') {
-        aplicarEsgotamentoAirfryer();
-        salvarEstadoRoleta();
-    }
+    // Registra a saída e esgota automaticamente se bateu o estoque.
+    // Serve pra qualquer prêmio — sem casos especiais por item.
+    registrarSaida(items[winningIndex].id);
 
     const sliceCenterAngle = winningIndex * sliceAngle + sliceAngle / 2;
     const extraSpins = 7 * 2 * Math.PI; 
@@ -592,14 +694,15 @@ function spinWheel() {
             requestAnimationFrame(animate);
         } else {
             isSpinning = false;
-            document.getElementById("spinBtn").disabled = false;
+            // reabilita só se ainda houver estoque
+            atualizarDisponibilidade();
 
             const premioGanho = items[winningIndex];
 
             // Prêmios de voucher (resgatados depois, fora do estande) ganham
             // um código único que a pessoa fotografa. Esse mesmo código vai
             // pra planilha, o que permite conferir depois quem ganhou o quê.
-            const voucher = premioGanho.id === 'seguro' ? gerarCodigoVoucher() : null;
+            const voucher = premioGanho.voucher ? gerarCodigoVoucher() : null;
 
             registrarPremio({ id: premioGanho.id, nome: premioGanho.text, voucher });
             showModal({ ...premioGanho, voucher });
@@ -610,7 +713,7 @@ function spinWheel() {
 
 function showModal(premio) {
     const ehAirfryer = premio.id === 'airfryer';
-    const ehSeguro = premio.id === 'seguro';
+    const temVoucher = !!premio.voucher;
 
     const modal = document.getElementById("resultModal");
     const modalContent = document.getElementById("modalContent");
@@ -624,7 +727,7 @@ function showModal(premio) {
     // removida em seguida (ver função abaixo pra entender o motivo)
     anunciarParaLeitorDeTela(`Parabéns! Você ganhou: ${premio.text}`);
 
-    // Airfryer é o prêmio mais raro (só sai uma vez) — comemoração maior
+    // Airfryer é o prêmio mais raro (1 unidade só) — comemoração maior
     if (ehAirfryer) {
         titulo.textContent = "PRÊMIO RARÍSSIMO! 🎉🔥";
         modalContent.classList.add("especial");
@@ -633,12 +736,15 @@ function showModal(premio) {
         modalContent.classList.remove("especial");
     }
 
-    // Seguro Residencial: exibe o código do voucher em fonte grande pra
-    // pessoa fotografar. O código já foi gerado e gravado junto com o
-    // registro do giro, então a conferência posterior é só buscar esse
-    // código na planilha (com data/hora e prêmio na mesma linha).
-    if (ehSeguro) {
+    // Prêmios de voucher (Seguro Residencial, Voucher Auto): exibe o
+    // código em fonte grande pra pessoa fotografar. O código já foi
+    // gerado e gravado junto com o registro do giro, então a conferência
+    // posterior é só buscar esse código na planilha (com data/hora e
+    // prêmio na mesma linha).
+    if (temVoucher) {
         voucherBlock.classList.add("visivel");
+        document.getElementById("voucherInfo").textContent =
+            `Tire uma foto deste código e apresente no contato para resgatar seu prêmio (${premio.text}):`;
         document.getElementById("voucherCodigo").textContent = premio.voucher || '—';
         document.getElementById("voucherData").textContent = formatarDataHoraBR(new Date());
         btnFechar.textContent = "Fechar";
@@ -939,6 +1045,7 @@ window.addEventListener('offline', () => {
 // Inicialização
 carregarEstadoRoleta();
 drawWheel();
+atualizarDisponibilidade();
 atualizarStatusBar();
 tentarResincronizar();
 sincronizarEstadoComSheets();
