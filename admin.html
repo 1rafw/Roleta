@@ -562,12 +562,12 @@
         // ==========================================================
         // CONFIGURAÇÃO — use a MESMA URL do Apps Script usada no index.html
         // ==========================================================
-        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwQR2qXJ374b0YL4L-Jd17VCjudpGg_1XVTxTcXt7CJLafusv_DbHSMlsal89FeTgejEQ/exec";
+        const SHEETS_ENDPOINT = "https://script.google.com/macros/s/SEU_ID_AQUI/exec";
         const INTERVALO_ATUALIZACAO_MS = 15000; // 15s
 
         // Precisa ser IDÊNTICO ao TOKEN_SECRETO do Apps Script e ao
         // API_TOKEN do index.html.
-        const API_TOKEN = "VoIovGbGcHdzstW9MEPSG9fBBqBZ0ZBouahLqfi7Lw4W3VdoVYHvcUG7Jvk6zhls";
+        const API_TOKEN = "TROQUE_ESTE_TOKEN";
 
         // ==========================================================
         // SENHA DE ACESSO — troque por uma senha sua.
@@ -606,17 +606,19 @@
 
         // Espelha a lista de prêmios do index.html só para exibição
         // (nome, cor e limite). Se você mudar os prêmios lá, replique aqui.
-        // Espelha a lista do script.js. Todo prêmio agora tem `limite`
-        // (o estoque real), então o painel mostra quanto resta de cada um.
+        // Espelha a lista do script.js. Todo prêmio tem `limite` (o estoque
+        // real), então o painel mostra quanto resta de cada um.
         const CONFIG_PREMIOS = [
-            { id: 'bombom', nome: 'Bombom', cor: '#0072bb', limite: 350 },
-            { id: 'caneta', nome: 'Caneta', cor: '#E8A020', limite: 50 },
-            { id: 'kit', nome: 'Kit Caneta + Agenda', cor: '#2f9ade', limite: 10 },
-            { id: 'mochila', nome: 'Mochila', cor: '#E8A020', limite: 10 },
-            { id: 'airfryer', nome: 'Airfryer', cor: '#f03e3e', limite: 1 },
-            { id: 'caixa_som', nome: 'Caixa de Som', cor: '#2f9ade', limite: 10 },
-            { id: 'seguro', nome: 'Seguro Resid.', cor: '#E8A020', limite: 10 },
-            { id: 'voucher_auto', nome: 'Voucher Auto R$100', cor: '#2f9ade', limite: 5 }
+            { id: 'sonho_valsa', nome: 'Sonho de Valsa', cor: '#0072bb', limite: 200 },
+            { id: 'caneta', nome: 'Caneta', cor: '#2f9ade', limite: 49 },
+            { id: 'calendario', nome: 'Calendário', cor: '#E8A020', limite: 20 },
+            { id: 'cabo', nome: 'Cabo Carregador', cor: '#E8A020', limite: 10 },
+            { id: 'fone', nome: 'Fone de Ouvido', cor: '#E8A020', limite: 10 },
+            { id: 'caneca', nome: 'Caneca', cor: '#2f9ade', limite: 10 },
+            { id: 'mochila', nome: 'Mochila', cor: '#0072bb', limite: 10 },
+            { id: 'caneca_cafe', nome: 'Caneca de Café', cor: '#E8A020', limite: 5 },
+            { id: 'garrafa', nome: 'Garrafa Squeeze', cor: '#2f9ade', limite: 5 },
+            { id: 'airfryer', nome: 'Airfryer', cor: '#f03e3e', limite: 1 }
         ];
 
         function setStatus(estado, texto) {
