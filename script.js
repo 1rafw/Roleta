@@ -27,25 +27,57 @@ const ctx = canvas.getContext("2d");
 //
 // `voucher: true` = prêmio resgatado depois, fora do estande: gera um
 // código único que a pessoa fotografa e que fica gravado na planilha.
+// ESTOQUE ATUALIZADO em 27/08 às 11:42, com base nos 197 giros já
+// registrados na planilha. O número aqui é o que AINDA EXISTE, não o
+// estoque original — o peso de cada item é o estoque restante, então
+// as odds já refletem a realidade.
+//
+// Caneca de Café (5/5) e Garrafa Squeeze (5/5) esgotaram e foram
+// REMOVIDAS da roda: a roleta passou de 10 para 8 fatias.
 const items = [
-    { id: 'bombom',      text: "Bombom",              estoque: 350, color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
-    { id: 'caneta',      text: "Caneta",              estoque: 50,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'kit',         text: "Kit Caneta + Agenda", estoque: 10,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
-    { id: 'mochila',     text: "Mochila",             estoque: 10,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'airfryer',    text: "Airfryer",            estoque: 1,   color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true },
-    { id: 'caixa_som',   text: "Caixa de Som",        estoque: 10,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
-    { id: 'seguro',      text: "Seguro Residencial",  estoque: 10,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206", voucher: true },
-    { id: 'voucher_auto',text: "Voucher Auto R$100",  estoque: 5,   color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF", voucher: true }
+    { id: 'sonho_valsa', text: "Sonho de Valsa",  estoque: 86, color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
+    { id: 'cabo',        text: "Cabo Carregador", estoque: 3,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'caneta',      text: "Caneta",          estoque: 19, color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
+    { id: 'fone',        text: "Fone de Ouvido",  estoque: 5,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'airfryer',    text: "Airfryer",        estoque: 1,  color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true },
+    { id: 'caneca',      text: "Caneca",          estoque: 4,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
+    { id: 'calendario',  text: "Calendário",      estoque: 2,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'mochila',     text: "Mochila",         estoque: 0,  color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" }
 ];
 
-// Item que absorve o peso dos prêmios esgotados (o de maior estoque)
-const ITEM_REPOSICAO = 'bombom';
+const ITEM_REPOSICAO = 'sonho_valsa';
+
+// ==========================================================
+// VERSÃO DO ESTOQUE — aumente este número TODA VEZ que mexer na
+// lista `items` acima. Se o número mudar, o estado salvo no tablet
+// é descartado e os valores novos passam a valer.
+//
+// Sem isso, editar a lista não teria efeito nenhum: o localStorage
+// restaura os pesos antigos assim que a página carrega.
+// ==========================================================
+const VERSAO_ESTOQUE = 2;
+
+// Giros já registrados na planilha ANTES desta atualização de estoque.
+// A sincronização com o Sheets conta o histórico inteiro (197 giros),
+// então sem esse marco zero ela acharia que o estoque novo já estourou
+// e esgotaria todos os prêmios na primeira sincronização.
+const GIROS_JA_CONTABILIZADOS = {
+    sonho_valsa: 114,
+    caneta: 30,
+    calendario: 18,
+    cabo: 7,
+    fone: 5,
+    caneca: 6,
+    mochila: 7,
+    airfryer: 0
+};
 
 // Inicializa peso = estoque e o contador de saídas de cada prêmio
 items.forEach(item => {
     item.weight = item.estoque;
     item.saidas = 0;
     item.esgotado = false;
+    item.jaSaiu = GIROS_JA_CONTABILIZADOS[item.id] || 0;
 });
 
 let cliquesLogo = 0;
@@ -61,6 +93,7 @@ const STORAGE_KEY_ESTADO = 'estado_roleta_cf';
 
 function salvarEstadoRoleta() {
     const estado = {
+        versao: VERSAO_ESTOQUE,
         premios: items.map(i => ({ id: i.id, weight: i.weight, saidas: i.saidas, esgotado: !!i.esgotado })),
         airfryerForcada
     };
@@ -71,6 +104,14 @@ function carregarEstadoRoleta() {
     try {
         const salvo = JSON.parse(localStorage.getItem(STORAGE_KEY_ESTADO) || 'null');
         if (!salvo || !salvo.premios) return;
+
+        // Estado antigo (de antes da atualização de estoque): descarta,
+        // senão os pesos velhos sobrescreveriam os novos.
+        if (salvo.versao !== VERSAO_ESTOQUE) {
+            localStorage.removeItem(STORAGE_KEY_ESTADO);
+            console.log('%c↻ Estoque atualizado — estado antigo descartado.', 'color:#0072bb;font-weight:bold');
+            return;
+        }
 
         salvo.premios.forEach(p => {
             const item = items.find(i => i.id === p.id);
@@ -122,6 +163,74 @@ function registrarSaida(id) {
 }
 
 // ==========================================================
+// AJUSTE DE ESTOQUE AO VIVO (usar pelo console: F12 -> Console)
+//
+// O peso de cada prêmio É o estoque dele, então "mudar as odds"
+// = informar quantas unidades ainda existem de verdade.
+//
+// Importante: editar a lista `items` no arquivo NÃO adianta com o
+// evento em andamento, porque o estado salvo no navegador sobrescreve
+// os valores do arquivo ao carregar a página. Use estas funções.
+//
+//   verEstoque()                    -> mostra a situação atual
+//   ajustarEstoque('caneca', 3)     -> restam 3 canecas
+//   ajustarEstoque('mochila', 0)    -> mochila acabou (sai da roleta)
+//   resetarRoleta()                 -> volta tudo aos valores do arquivo
+// ==========================================================
+function verEstoque() {
+    const total = items.reduce((s, i) => s + i.weight, 0);
+    console.table(items.map(i => ({
+        id: i.id,
+        Prêmio: i.text,
+        'Estoque inicial': i.estoque,
+        'Já saiu': i.saidas,
+        'Restam': Math.max(i.estoque - i.saidas, 0),
+        'Chance agora': total > 0 ? (i.weight / total * 100).toFixed(2) + '%' : '—',
+        Esgotado: i.esgotado ? 'SIM' : '-'
+    })));
+    return `Total de ${items.reduce((s, i) => s + Math.max(i.estoque - i.saidas, 0), 0)} unidades restantes.`;
+}
+
+// Informa quantas unidades AINDA EXISTEM de um prêmio.
+// A chance dele passa a ser proporcional a esse número.
+function ajustarEstoque(id, unidadesRestantes) {
+    const item = items.find(i => i.id === id);
+    if (!item) {
+        console.error(`Prêmio "${id}" não existe. IDs válidos:`, items.map(i => i.id).join(', '));
+        return;
+    }
+
+    const restante = Math.max(0, Number(unidadesRestantes) || 0);
+
+    // Reancora o item: o que ainda existe passa a ser o estoque, o
+    // contador zera, e o marco zero passa a ser o total já registrado
+    // na planilha — senão a próxima sincronização desfaria o ajuste.
+    item.jaSaiu = (item.jaSaiu || 0) + item.saidas;
+    item.estoque = restante;
+    item.saidas = 0;
+    item.weight = restante;
+    item.esgotado = restante === 0;
+
+    salvarEstadoRoleta();
+    drawWheel(currentAngle);
+    atualizarDisponibilidade();
+
+    const total = items.reduce((s, i) => s + i.weight, 0);
+    console.log(
+        `%c✓ ${item.text}: ${restante} unidade(s) restante(s)` +
+        (restante === 0 ? ' — saiu da roleta.' : ` — chance agora: ${(restante / total * 100).toFixed(2)}%`),
+        'color:#15803d;font-weight:bold'
+    );
+    return verEstoque();
+}
+
+// Volta tudo aos valores originais do arquivo (apaga o estado salvo)
+function resetarRoleta() {
+    localStorage.removeItem('estado_roleta_cf');
+    console.log('%c↺ Estado apagado. Recarregue a página (F5) para aplicar.', 'color:#0072bb;font-weight:bold');
+}
+
+// ==========================================================
 // SINCRONIZAÇÃO COM O GOOGLE SHEETS (camada extra de segurança)
 // A planilha é a fonte da verdade: se o tablet trocar de navegador,
 // limpar dados ou for substituído no meio do evento, o contador de
@@ -138,7 +247,11 @@ function sincronizarEstadoComSheets() {
             let mudou = false;
 
             items.forEach(item => {
-                const naPlanilha = porPremio[item.id] || 0;
+                // A planilha guarda o histórico INTEIRO do evento. Como o
+                // estoque foi reancorado no que ainda existe, descontamos
+                // os giros que já estavam contabilizados antes do reajuste.
+                const naPlanilha = (porPremio[item.id] || 0) - (item.jaSaiu || 0);
+
                 // só sobe, nunca desce: evita que uma leitura parcial da
                 // planilha "devolva" prêmios que já saíram no tablet
                 if (naPlanilha > item.saidas) {
@@ -248,8 +361,8 @@ const ICONES = {
         ctx.closePath();
     },
 
-    // Bombom embrulhado
-    bombom(ctx, s) {
+    // Bombom embrulhado (Sonho de Valsa)
+    sonho_valsa(ctx, s) {
         ICONES._prep(ctx, s);
         ctx.beginPath();
         ctx.arc(0, 0, s * 0.26, 0, Math.PI * 2);
@@ -264,91 +377,31 @@ const ICONES = {
         });
     },
 
-    // Agenda + caneta
-    kit(ctx, s) {
+    // Cabo carregador (plugue USB + fio)
+    cabo(ctx, s) {
         ICONES._prep(ctx, s);
-        ICONES._roundRect(ctx, -s * 0.44, -s * 0.34, s * 0.46, s * 0.68, s * 0.06);
+        // conector
+        ICONES._roundRect(ctx, -s * 0.16, -s * 0.42, s * 0.32, s * 0.26, s * 0.05);
         ctx.stroke();
-        for (let i = -1; i <= 1; i++) {
+        // pinos
+        [-1, 1].forEach(l => {
             ctx.beginPath();
-            ctx.moveTo(-s * 0.34, i * s * 0.17);
-            ctx.lineTo(-s * 0.08, i * s * 0.17);
+            ctx.moveTo(l * s * 0.07, -s * 0.42);
+            ctx.lineTo(l * s * 0.07, -s * 0.5);
             ctx.stroke();
-        }
-        // caneta na diagonal
+        });
+        // fio ondulado
         ctx.beginPath();
-        ctx.moveTo(s * 0.14, s * 0.32);
-        ctx.lineTo(s * 0.42, -s * 0.24);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(s * 0.42, -s * 0.24);
-        ctx.lineTo(s * 0.48, -s * 0.36);
-        ctx.lineTo(s * 0.36, -s * 0.3);
-        ctx.closePath();
+        ctx.moveTo(0, -s * 0.16);
+        ctx.bezierCurveTo(s * 0.3, s * 0.02, -s * 0.3, s * 0.22, s * 0.1, s * 0.46);
         ctx.stroke();
     },
 
-    // Casa (seguro residencial)
-    seguro(ctx, s) {
-        ICONES._prep(ctx, s);
-        ctx.beginPath();
-        ctx.moveTo(-s * 0.42, -s * 0.04);
-        ctx.lineTo(0, -s * 0.38);
-        ctx.lineTo(s * 0.42, -s * 0.04);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-s * 0.3, -s * 0.04);
-        ctx.lineTo(-s * 0.3, s * 0.36);
-        ctx.lineTo(s * 0.3, s * 0.36);
-        ctx.lineTo(s * 0.3, -s * 0.04);
-        ctx.stroke();
-        // porta
-        ctx.beginPath();
-        ctx.rect(-s * 0.09, s * 0.1, s * 0.18, s * 0.26);
-        ctx.stroke();
-    },
-
-    // Caixa de som
-    caixa_som(ctx, s) {
-        ICONES._prep(ctx, s);
-        ICONES._roundRect(ctx, -s * 0.3, -s * 0.42, s * 0.6, s * 0.84, s * 0.08);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(0, s * 0.12, s * 0.17, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(0, -s * 0.22, s * 0.075, 0, Math.PI * 2);
-        ctx.stroke();
-    },
-
-    // Airfryer (fritadeira elétrica)
-    airfryer(ctx, s) {
-        ICONES._prep(ctx, s);
-        // corpo
-        ICONES._roundRect(ctx, -s * 0.32, -s * 0.3, s * 0.64, s * 0.68, s * 0.12);
-        ctx.stroke();
-        // painel / linha da gaveta
-        ctx.beginPath();
-        ctx.moveTo(-s * 0.32, s * 0.02);
-        ctx.lineTo(s * 0.32, s * 0.02);
-        ctx.stroke();
-        // botão
-        ctx.beginPath();
-        ctx.arc(s * 0.14, -s * 0.14, s * 0.07, 0, Math.PI * 2);
-        ctx.stroke();
-        // puxador da gaveta
-        ctx.beginPath();
-        ctx.moveTo(-s * 0.12, s * 0.22);
-        ctx.lineTo(s * 0.12, s * 0.22);
-        ctx.stroke();
-    },
-
-    // Caneta simples
+    // Caneta
     caneta(ctx, s) {
         ICONES._prep(ctx, s);
         ctx.save();
         ctx.rotate(-Math.PI / 6);
-        // corpo
         ctx.beginPath();
         ctx.moveTo(-s * 0.09, -s * 0.38);
         ctx.lineTo(s * 0.09, -s * 0.38);
@@ -357,12 +410,10 @@ const ICONES = {
         ctx.lineTo(-s * 0.09, s * 0.18);
         ctx.closePath();
         ctx.stroke();
-        // separação da ponta
         ctx.beginPath();
         ctx.moveTo(-s * 0.09, s * 0.18);
         ctx.lineTo(s * 0.09, s * 0.18);
         ctx.stroke();
-        // clipe
         ctx.beginPath();
         ctx.moveTo(-s * 0.09, -s * 0.28);
         ctx.lineTo(s * 0.09, -s * 0.28);
@@ -370,46 +421,138 @@ const ICONES = {
         ctx.restore();
     },
 
+    // Fone de ouvido (headphone)
+    fone(ctx, s) {
+        ICONES._prep(ctx, s);
+        // arco
+        ctx.beginPath();
+        ctx.arc(0, s * 0.02, s * 0.34, Math.PI, 0);
+        ctx.stroke();
+        // conchas
+        [-1, 1].forEach(l => {
+            ICONES._roundRect(ctx, l * s * 0.34 - s * 0.09, s * 0.0, s * 0.18, s * 0.3, s * 0.07);
+            ctx.stroke();
+        });
+    },
+
+    // Airfryer (fritadeira elétrica)
+    airfryer(ctx, s) {
+        ICONES._prep(ctx, s);
+        ICONES._roundRect(ctx, -s * 0.32, -s * 0.3, s * 0.64, s * 0.68, s * 0.12);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.32, s * 0.02);
+        ctx.lineTo(s * 0.32, s * 0.02);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(s * 0.14, -s * 0.14, s * 0.07, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.12, s * 0.22);
+        ctx.lineTo(s * 0.12, s * 0.22);
+        ctx.stroke();
+    },
+
+    // Copo térmico (tumbler com tampa)
+    // Xícara de café com pires (diferencia da caneca comum)
+    caneca_cafe(ctx, s) {
+        ICONES._prep(ctx, s);
+        // xícara
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.24, -s * 0.16);
+        ctx.lineTo(s * 0.18, -s * 0.16);
+        ctx.lineTo(s * 0.13, s * 0.16);
+        ctx.lineTo(-s * 0.19, s * 0.16);
+        ctx.closePath();
+        ctx.stroke();
+        // alça
+        ctx.beginPath();
+        ctx.arc(s * 0.2, -s * 0.02, s * 0.11, -Math.PI / 2, Math.PI / 2);
+        ctx.stroke();
+        // pires
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.34, s * 0.26);
+        ctx.lineTo(s * 0.3, s * 0.26);
+        ctx.stroke();
+        // vapor
+        [-1, 1].forEach(l => {
+            ctx.beginPath();
+            ctx.moveTo(l * s * 0.1, -s * 0.26);
+            ctx.lineTo(l * s * 0.1, -s * 0.4);
+            ctx.stroke();
+        });
+    },
+
+    // Calendário
+    calendario(ctx, s) {
+        ICONES._prep(ctx, s);
+        ICONES._roundRect(ctx, -s * 0.36, -s * 0.3, s * 0.72, s * 0.66, s * 0.07);
+        ctx.stroke();
+        // faixa do topo
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.36, -s * 0.12);
+        ctx.lineTo(s * 0.36, -s * 0.12);
+        ctx.stroke();
+        // argolas
+        [-1, 1].forEach(l => {
+            ctx.beginPath();
+            ctx.moveTo(l * s * 0.18, -s * 0.3);
+            ctx.lineTo(l * s * 0.18, -s * 0.44);
+            ctx.stroke();
+        });
+        // marcações dos dias
+        for (let ly = 0; ly < 2; ly++) {
+            for (let lx = -1; lx <= 1; lx++) {
+                ctx.beginPath();
+                ctx.arc(lx * s * 0.19, s * 0.04 + ly * s * 0.2, s * 0.035, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+    },
+
     // Mochila
     mochila(ctx, s) {
         ICONES._prep(ctx, s);
-        // corpo
         ICONES._roundRect(ctx, -s * 0.3, -s * 0.22, s * 0.6, s * 0.62, s * 0.12);
         ctx.stroke();
-        // alça superior
         ctx.beginPath();
         ctx.arc(0, -s * 0.22, s * 0.16, Math.PI, 0);
         ctx.stroke();
-        // bolso da frente
         ICONES._roundRect(ctx, -s * 0.17, s * 0.08, s * 0.34, s * 0.24, s * 0.05);
         ctx.stroke();
     },
 
-    // Voucher / cupom de desconto
-    voucher_auto(ctx, s) {
+    // Caneca de café (com alça)
+    caneca(ctx, s) {
         ICONES._prep(ctx, s);
-        ICONES._roundRect(ctx, -s * 0.42, -s * 0.26, s * 0.84, s * 0.52, s * 0.07);
+        // corpo
+        ICONES._roundRect(ctx, -s * 0.3, -s * 0.22, s * 0.46, s * 0.58, s * 0.07);
         ctx.stroke();
-        // picote no meio
-        ctx.save();
-        ctx.setLineDash([s * 0.07, s * 0.07]);
+        // alça
         ctx.beginPath();
-        ctx.moveTo(s * 0.12, -s * 0.26);
-        ctx.lineTo(s * 0.12, s * 0.26);
+        ctx.arc(s * 0.16, s * 0.06, s * 0.15, -Math.PI / 2, Math.PI / 2);
         ctx.stroke();
-        ctx.restore();
-        // cifrão estilizado
-        ctx.beginPath();
-        ctx.moveTo(-s * 0.09, -s * 0.1);
-        ctx.lineTo(-s * 0.24, -s * 0.1);
-        ctx.lineTo(-s * 0.24, 0);
-        ctx.lineTo(-s * 0.09, 0);
-        ctx.lineTo(-s * 0.09, s * 0.1);
-        ctx.lineTo(-s * 0.24, s * 0.1);
+        // vapor
+        [-1, 0, 1].forEach(l => {
+            ctx.beginPath();
+            ctx.moveTo(l * s * 0.11 - s * 0.07, -s * 0.32);
+            ctx.lineTo(l * s * 0.11 - s * 0.07, -s * 0.46);
+            ctx.stroke();
+        });
+    },
+
+    // Garrafa squeeze
+    garrafa(ctx, s) {
+        ICONES._prep(ctx, s);
+        ICONES._roundRect(ctx, -s * 0.2, -s * 0.12, s * 0.4, s * 0.52, s * 0.09);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(-s * 0.165, -s * 0.17);
-        ctx.lineTo(-s * 0.165, s * 0.17);
+        ctx.moveTo(-s * 0.09, -s * 0.12);
+        ctx.lineTo(-s * 0.09, -s * 0.3);
+        ctx.lineTo(s * 0.09, -s * 0.3);
+        ctx.lineTo(s * 0.09, -s * 0.12);
+        ctx.stroke();
+        ICONES._roundRect(ctx, -s * 0.12, -s * 0.42, s * 0.24, s * 0.12, s * 0.04);
         ctx.stroke();
     }
 };
@@ -729,7 +872,7 @@ function showModal(premio) {
 
     // Airfryer é o prêmio mais raro (1 unidade só) — comemoração maior
     if (ehAirfryer) {
-        titulo.textContent = "PRÊMIO PRINCIPAL! 🎉🔥";
+        titulo.textContent = "PRÊMIO RARÍSSIMO! 🎉🔥";
         modalContent.classList.add("especial");
     } else {
         titulo.textContent = "Parabéns! 🎉";
