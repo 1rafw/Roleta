@@ -35,14 +35,14 @@ const ctx = canvas.getContext("2d");
 // Caneca de Café (5/5) e Garrafa Squeeze (5/5) esgotaram e foram
 // REMOVIDAS da roda: a roleta passou de 10 para 8 fatias.
 const items = [
-    { id: 'sonho_valsa', text: "Sonho de Valsa",  estoque: 86, color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
-    { id: 'cabo',        text: "Cabo Carregador", estoque: 3,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'caneta',      text: "Caneta",          estoque: 19, color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
-    { id: 'fone',        text: "Fone de Ouvido",  estoque: 5,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'sonho_valsa', text: "Sonho de Valsa",  estoque: 2, color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
+    { id: 'cabo',        text: "Cabo Carregador", estoque: 2,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'caneta',      text: "Caneta",          estoque: 0, color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
+    { id: 'fone',        text: "Fone de Ouvido",  estoque: 3,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
     { id: 'airfryer',    text: "Airfryer",        estoque: 0,  color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true },
-    { id: 'caneca',      text: "Caneca",          estoque: 4,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
+    { id: 'caneca',      text: "Caneca",          estoque: 0,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
     { id: 'calendario',  text: "Calendário",      estoque: 0,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'mochila',     text: "Mochila",         estoque: 0,  color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" }
+    { id: 'mochila',     text: "Mochila",         estoque: 2,  color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" }
 ];
 
 const ITEM_REPOSICAO = 'sonho_valsa';
