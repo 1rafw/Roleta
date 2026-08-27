@@ -41,7 +41,7 @@ const items = [
     { id: 'fone',        text: "Fone de Ouvido",  estoque: 5,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
     { id: 'airfryer',    text: "Airfryer",        estoque: 0,  color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true },
     { id: 'caneca',      text: "Caneca",          estoque: 4,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
-    { id: 'calendario',  text: "Calendário",      estoque: 2,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'calendario',  text: "Calendário",      estoque: 0,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
     { id: 'mochila',     text: "Mochila",         estoque: 0,  color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" }
 ];
 
