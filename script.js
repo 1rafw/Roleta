@@ -27,25 +27,26 @@ const ctx = canvas.getContext("2d");
 //
 // `voucher: true` = prêmio resgatado depois, fora do estande: gera um
 // código único que a pessoa fotografa e que fica gravado na planilha.
-// ESTOQUE ATUALIZADO em 27/08 às 11:42, com base nos 197 giros já
-// registrados na planilha. O número aqui é o que AINDA EXISTE, não o
-// estoque original — o peso de cada item é o estoque restante, então
-// as odds já refletem a realidade.
+// FASE FINAL DO EVENTO — quase tudo esgotado.
+// Restou 1 Calendário como único prêmio de verdade.
 //
-// Caneca de Café (5/5) e Garrafa Squeeze (5/5) esgotaram e foram
-// REMOVIDAS da roda: a roleta passou de 10 para 8 fatias.
+// Mochila e Airfryer ficam na roda APENAS COMO EXPOSIÇÃO, para chamar
+// atenção: `peso: 0` faz com que nunca sejam sorteadas. Elas serão
+// rifadas em outro evento, então cair nelas geraria confusão.
+// Continuam coloridas e com ícone (não ficam cinza), só não saem.
 const items = [
-    { id: 'sonho_valsa', text: "Sonho de Valsa",  estoque: 2, color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
-    { id: 'cabo',        text: "Cabo Carregador", estoque: 2,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'caneta',      text: "Caneta",          estoque: 0, color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
-    { id: 'fone',        text: "Fone de Ouvido",  estoque: 3,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'airfryer',    text: "Airfryer",        estoque: 0,  color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true },
-    { id: 'caneca',      text: "Caneca",          estoque: 0,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
-    { id: 'calendario',  text: "Calendário",      estoque: 0,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'mochila',     text: "Mochila",         estoque: 2,  color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" }
+    { id: 'calendario', text: "Calendário", estoque: 1, color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'nada',       text: "Não foi dessa vez", color1: "#4b5563", color2: "#374151", textColor: "#FFFFFF",
+      semPremio: true, ilimitado: true, peso: 9 },
+    { id: 'mochila',    text: "Mochila", color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF",
+      ilimitado: true, peso: 0, apenasExibicao: true },
+    { id: 'airfryer',   text: "Airfryer", color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF",
+      destaque: true, ilimitado: true, peso: 0, apenasExibicao: true }
 ];
 
-const ITEM_REPOSICAO = 'sonho_valsa';
+// Quando um prêmio esgota, o peso dele vai pro "não foi dessa vez"
+// (é o único item que nunca acaba nesta fase)
+const ITEM_REPOSICAO = 'nada';
 
 // ==========================================================
 // VERSÃO DO ESTOQUE — aumente este número TODA VEZ que mexer na
@@ -55,26 +56,19 @@ const ITEM_REPOSICAO = 'sonho_valsa';
 // Sem isso, editar a lista não teria efeito nenhum: o localStorage
 // restaura os pesos antigos assim que a página carrega.
 // ==========================================================
-const VERSAO_ESTOQUE = 2;
+const VERSAO_ESTOQUE = 4;
 
-// Giros já registrados na planilha ANTES desta atualização de estoque.
-// A sincronização com o Sheets conta o histórico inteiro (197 giros),
-// então sem esse marco zero ela acharia que o estoque novo já estourou
-// e esgotaria todos os prêmios na primeira sincronização.
+// Giros já registrados na planilha ANTES desta atualização.
+// A sincronização conta o histórico inteiro do evento, então sem esse
+// marco zero ela acharia que o estoque novo já estourou.
 const GIROS_JA_CONTABILIZADOS = {
-    sonho_valsa: 114,
-    caneta: 30,
-    calendario: 18,
-    cabo: 7,
-    fone: 5,
-    caneca: 6,
-    mochila: 7,
-    airfryer: 0
+    calendario: 19
 };
 
-// Inicializa peso = estoque e o contador de saídas de cada prêmio
+// Inicializa peso e contador de cada prêmio.
+// Itens ilimitados usam `peso` fixo; os demais usam o estoque.
 items.forEach(item => {
-    item.weight = item.estoque;
+    item.weight = item.ilimitado ? item.peso : item.estoque;
     item.saidas = 0;
     item.esgotado = false;
     item.jaSaiu = GIROS_JA_CONTABILIZADOS[item.id] || 0;
@@ -154,6 +148,9 @@ function aplicarEsgotamento(id) {
 function registrarSaida(id) {
     const item = items.find(i => i.id === id);
     if (!item) return;
+
+    // Itens ilimitados (sem entrega física) nunca esgotam
+    if (item.ilimitado) return;
 
     item.saidas++;
     if (item.saidas >= item.estoque) {
@@ -247,6 +244,8 @@ function sincronizarEstadoComSheets() {
             let mudou = false;
 
             items.forEach(item => {
+                if (item.ilimitado) return; // nunca esgota
+
                 // A planilha guarda o histórico INTEIRO do evento. Como o
                 // estoque foi reancorado no que ainda existe, descontamos
                 // os giros que já estavam contabilizados antes do reajuste.
@@ -481,6 +480,25 @@ const ICONES = {
             ctx.lineTo(l * s * 0.1, -s * 0.4);
             ctx.stroke();
         });
+    },
+
+    // "Não foi dessa vez" — carinha neutra
+    nada(ctx, s) {
+        ICONES._prep(ctx, s);
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.34, 0, Math.PI * 2);
+        ctx.stroke();
+        // olhos
+        [-1, 1].forEach(l => {
+            ctx.beginPath();
+            ctx.arc(l * s * 0.13, -s * 0.08, s * 0.045, 0, Math.PI * 2);
+            ctx.stroke();
+        });
+        // boca reta
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.14, s * 0.15);
+        ctx.lineTo(s * 0.14, s * 0.15);
+        ctx.stroke();
     },
 
     // Calendário
@@ -792,9 +810,13 @@ function spinWheel() {
 
     const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
     let randomNum = Math.random() * totalWeight;
-    let winningIndex = 0;
+    // começa no primeiro item sorteável, não no índice 0: se o índice 0
+    // tivesse peso 0 (item só de exposição), ele poderia ser escolhido
+    // quando Math.random() devolvesse exatamente 0
+    let winningIndex = items.findIndex(i => i.weight > 0);
 
     for (let i = 0; i < items.length; i++) {
+        if (items[i].weight <= 0) continue; // pula itens de exposição
         randomNum -= items[i].weight;
         if (randomNum <= 0) {
             winningIndex = i;
@@ -857,6 +879,7 @@ function spinWheel() {
 function showModal(premio) {
     const ehAirfryer = premio.id === 'airfryer';
     const temVoucher = !!premio.voucher;
+    const semPremio = !!premio.semPremio;
 
     const modal = document.getElementById("resultModal");
     const modalContent = document.getElementById("modalContent");
@@ -864,6 +887,30 @@ function showModal(premio) {
     const voucherBlock = document.getElementById("voucherBlock");
     const btnFechar = document.getElementById("btnFecharModal");
 
+    // ----- Caso "não foi dessa vez" -----
+    // Mochila e Airfryer continuam na roda pela emoção, mas não são
+    // entregues agora: vão a sorteio num evento posterior.
+    if (semPremio) {
+        titulo.textContent = "Não foi dessa vez! 😢";
+        modalContent.classList.remove("especial");
+        modalContent.classList.add("sem-premio");
+
+        document.getElementById("winnerText").innerText = premio.sorteioFuturo
+            ? `A ${premio.text} será sorteada em um evento posterior. Fique de olho!`
+            : "Obrigado por participar! Tente novamente.";
+
+        anunciarParaLeitorDeTela("Não foi dessa vez.");
+
+        voucherBlock.classList.remove("visivel");
+        btnFechar.textContent = "Fechar";
+
+        modal.classList.add("active");
+        modal.setAttribute("aria-hidden", "false");
+        // sem confete e sem som de vitória: não houve prêmio
+        return;
+    }
+
+    modalContent.classList.remove("sem-premio");
     document.getElementById("winnerText").innerText = `Você ganhou: ${premio.text}`;
 
     // Anúncio pra leitor de tela — região temporária, criada e
