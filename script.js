@@ -1,7 +1,7 @@
 // ==========================================================
 // CONFIGURAÇÃO — troque pela URL do seu Apps Script (/exec)
 // ==========================================================
-const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwQR2qXJ374b0YL4L-Jd17VCjudpGg_1XVTxTcXt7CJLafusv_DbHSMlsal89FeTgejEQ/exec";
+const SHEETS_ENDPOINT = "https://script.google.com/macros/s/SEU_ID_AQUI/exec";
 
 // ==========================================================
 // TOKEN DE SEGURANÇA — precisa ser IDÊNTICO ao TOKEN_SECRETO
@@ -9,7 +9,7 @@ const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwQR2qXJ374b0YL
 // Sem isso, qualquer pessoa com a URL do /exec poderia mandar
 // requisições falsas e sujar seus dados de inventário.
 // ==========================================================
-const API_TOKEN = "VoIovGbGcHdzstW9MEPSG9fBBqBZ0ZBouahLqfi7Lw4W3VdoVYHvcUG7Jvk6zhls";
+const API_TOKEN = "TROQUE_ESTE_TOKEN";
 
 const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
