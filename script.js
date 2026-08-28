@@ -27,26 +27,31 @@ const ctx = canvas.getContext("2d");
 //
 // `voucher: true` = prêmio resgatado depois, fora do estande: gera um
 // código único que a pessoa fotografa e que fica gravado na planilha.
-// FASE FINAL DO EVENTO — quase tudo esgotado.
-// Restou 1 Calendário como único prêmio de verdade.
+// ESTOQUE COMPLETO — 10 prêmios, 320 unidades.
+// Versão para um evento novo, com tudo disponível.
 //
-// Mochila e Airfryer ficam na roda APENAS COMO EXPOSIÇÃO, para chamar
-// atenção: `peso: 0` faz com que nunca sejam sorteadas. Elas serão
-// rifadas em outro evento, então cair nelas geraria confusão.
-// Continuam coloridas e com ícone (não ficam cinza), só não saem.
+// O `weight` de cada item é igual ao `estoque`, então a probabilidade
+// é proporcional ao que existe de verdade e todos os prêmios tendem a
+// acabar por volta do mesmo giro (~320). Quando um item esgota, o peso
+// dele é transferido pro item de reposição (ITEM_REPOSICAO).
+//
+// `textColor` existe porque texto branco some sobre a mostarda.
+// A Airfryer usa vermelho + brilho por ser o prêmio máximo.
 const items = [
-    { id: 'calendario', text: "Calendário", estoque: 1, color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
-    { id: 'nada',       text: "Não foi dessa vez", color1: "#4b5563", color2: "#374151", textColor: "#FFFFFF",
-      semPremio: true, ilimitado: true, peso: 9 },
-    { id: 'mochila',    text: "Mochila", color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF",
-      ilimitado: true, peso: 0, apenasExibicao: true },
-    { id: 'airfryer',   text: "Airfryer", color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF",
-      destaque: true, ilimitado: true, peso: 0, apenasExibicao: true }
+    { id: 'sonho_valsa', text: "Sonho de Valsa",  estoque: 200, color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
+    { id: 'cabo',        text: "Cabo Carregador", estoque: 10,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'caneta',      text: "Caneta",          estoque: 49,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
+    { id: 'fone',        text: "Fone de Ouvido",  estoque: 10,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'airfryer',    text: "Airfryer",        estoque: 1,   color1: "#f03e3e", color2: "#c81e1e", textColor: "#FFFFFF", destaque: true },
+    { id: 'caneca',      text: "Caneca",          estoque: 10,  color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" },
+    { id: 'calendario',  text: "Calendário",      estoque: 20,  color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'mochila',     text: "Mochila",         estoque: 10,  color1: "#0072bb", color2: "#005e9c", textColor: "#FFFFFF" },
+    { id: 'caneca_cafe', text: "Caneca de Café",  estoque: 5,   color1: "#E8A020", color2: "#c9860f", textColor: "#1a1206" },
+    { id: 'garrafa',     text: "Garrafa Squeeze", estoque: 5,   color1: "#2f9ade", color2: "#1c81c2", textColor: "#FFFFFF" }
 ];
 
-// Quando um prêmio esgota, o peso dele vai pro "não foi dessa vez"
-// (é o único item que nunca acaba nesta fase)
-const ITEM_REPOSICAO = 'nada';
+// Quando um prêmio esgota, o peso dele vai pro item de maior estoque
+const ITEM_REPOSICAO = 'sonho_valsa';
 
 // ==========================================================
 // VERSÃO DO ESTOQUE — aumente este número TODA VEZ que mexer na
@@ -56,14 +61,13 @@ const ITEM_REPOSICAO = 'nada';
 // Sem isso, editar a lista não teria efeito nenhum: o localStorage
 // restaura os pesos antigos assim que a página carrega.
 // ==========================================================
-const VERSAO_ESTOQUE = 4;
+const VERSAO_ESTOQUE = 10;
 
-// Giros já registrados na planilha ANTES desta atualização.
-// A sincronização conta o histórico inteiro do evento, então sem esse
-// marco zero ela acharia que o estoque novo já estourou.
-const GIROS_JA_CONTABILIZADOS = {
-    calendario: 19
-};
+// Giros já registrados na planilha ANTES desta configuração de estoque.
+// Em evento novo (planilha limpa) deixe vazio. Se você reaproveitar uma
+// planilha que já tem histórico, preencha aqui quanto de cada prêmio já
+// saiu — senão a sincronização acha que o estoque estourou e esgota tudo.
+const GIROS_JA_CONTABILIZADOS = {};
 
 // Inicializa peso e contador de cada prêmio.
 // Itens ilimitados usam `peso` fixo; os demais usam o estoque.

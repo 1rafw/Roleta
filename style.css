@@ -339,3 +339,12 @@ body::before {
 .modal-content.especial h2 {
     color: #f59e0b;
 }
+
+/* Estado "não foi dessa vez": tom neutro, sem festa */
+.modal-content.sem-premio {
+    border-color: rgba(244, 246, 249, 0.2);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+.modal-content.sem-premio h2 {
+    color: #9ca3af;
+}
